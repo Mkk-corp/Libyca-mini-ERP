@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}المصروفات - ليبيكا ERP{% endblock %}
+
+{% block breadcrumb %}
+<i class="bi bi-cash-stack me-1"></i> المصروفات
+{% endblock %}
+
+{% block content %}
+
+<!-- Stats + Action Bar -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-lg-4">
+    <div class="card stat-card h-100">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="icon bg-danger bg-opacity-10 text-danger">
+          <i class="bi bi-cash-stack"></i>
+        </div>
+        <div>
+          <div class="text-muted" style="font-size:.8rem">إجمالي السجلات</div>
+          <div class="fw-bold fs-5">{{ total | default(0) }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-4">
+    <div class="card stat-card h-100">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="icon bg-warning bg-opacity-10 text-warning">
+          <i class="bi bi-currency-dollar"></i>
+        </div>
+        <div>
+          <div class="text-muted" style="font-size:.8rem">إجمالي المصروفات (د.ل)</div>
+          <div class="fw-bold fs-5 amount-neg">{{ "{:,.2f}".format(total_amount | default(0)) }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4 d-flex align-items-center justify-content-lg-end">
+    <a href="/expenses/new" class="btn btn-success px-4">
+      <i class="bi bi-plus-lg me-1"></i> إضافة مصروف
+    </a>
+  </div>
+</div>
+
+<!-- Search / Filter -->
+<div class="card table-card mb-4">
+  <div class="card-body py-3">
+    <form method="get" action="/expenses" class="row g-2 align-items-end">
+      <div class="col-sm-4">
+        <label class="form-label small text-muted mb-1">بحث</label>
+        <div class="input-group">
+          <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+          <input type="text" name="q" class="form-control" placeholder="بيان المصروف..." value="{{ q or '' }}">
+        </div>
+      </div>
+      <div class="col-sm-3">
+        <label class="form-label small text-muted mb-1">الفئة</label>
+        <select name="cat" class="form-select">
+          <option value="">-- كل الفئات --</option>
+          {% for cid, cname in cats.items() %}
+            <option value="{{ cid }}" {% if cat and cat|string == cid|string %}selected{% endif %}>{{ cname }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-2">
+        <label class="form-label small text-muted mb-1">الشهر</label>
+        <input type="month" name="month" class="form-control" value="{{ month or '' }}">
+      </div>
+      <div class="col-sm-1 d-grid">
+        <label class="form-label small text-muted mb-1 invisible">x</label>
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-funnel"></i>
+        </button>
+      </div>
+      <div class="col-sm-2 d-grid">
+        <label class="form-label small text-muted mb-1 invisible">x</label>
+        <a href="/expenses" class="btn btn-outline-secondary">
+          <i class="bi bi-x-lg me-1"></i> مسح
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th>رقم المصروف</th>
+          <th>التاريخ</th>
+          <th>الفئة</th>
+          <th>البيان</th>
+          <th class="text-end">المبلغ (د.ل)</th>
+          <th>طريقة الدفع</th>
+          <th class="text-center">إجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if expenses %}
+          {% for e in expenses %}
+          <tr>
+            <td><span class="badge bg-danger bg-opacity-10 text-danger fw-semibold">{{ e.id }}</span></td>
+            <td class="text-muted" style="font-size:.88rem">{{ e.date_ }}</td>
+            <td>
+              <span class="badge bg-info bg-opacity-10 text-info">
+                {{ cats.get(e.category_id | string, cats.get(e.category_id, '—')) }}
+              </span>
+            </td>
+            <td>{{ e.description or '—' }}</td>
+            <td class="text-end fw-semibold amount-neg">{{ "{:,.2f}".format(e.amount_lyd or 0) }}</td>
+            <td>
+              <span class="badge
+                {% if e.payment_method == 'كاش' %}bg-success
+                {% elif e.payment_method == 'مصرف' %}bg-primary
+                {% else %}bg-warning text-dark{% endif %}
+                bg-opacity-75">
+                {{ e.payment_method or '—' }}
+              </span>
+            </td>
+            <td class="text-center">
+              <div class="d-flex gap-1 justify-content-center">
+                <a href="/expenses/{{ e.id }}/edit" class="btn btn-sm btn-outline-primary" title="تعديل">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <a href="/expenses/{{ e.id }}/print" class="btn btn-sm btn-outline-secondary" target="_blank" title="طباعة">
+                  <i class="bi bi-printer"></i>
+                </a>
+                <form method="post" action="/expenses/{{ e.id }}/delete" class="delete-form d-inline">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted py-5">
+              <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+              لا توجد سجلات مصروفات
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+      {% if expenses %}
+      <tfoot>
+        <tr class="table-light fw-bold">
+          <td colspan="4" class="text-end">الإجمالي:</td>
+          <td class="text-end amount-neg">{{ "{:,.2f}".format(total_amount | default(0)) }}</td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if pages and pages > 1 %}
+  <div class="card-footer bg-white border-top py-3">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="text-muted" style="font-size:.85rem">
+        صفحة {{ page }} من {{ pages }} — إجمالي {{ total }} سجل
+      </div>
+      <nav>
+        <ul class="pagination pagination-sm mb-0 gap-1">
+          <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+            <a class="page-link" href="?page={{ page - 1 }}{% if q %}&q={{ q }}{% endif %}{% if month %}&month={{ month }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}">
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          </li>
+          {% for p_num in range(1, pages + 1) %}
+            {% if p_num == page %}
+              <li class="page-item active"><span class="page-link">{{ p_num }}</span></li>
+            {% elif p_num == 1 or p_num == pages or (p_num >= page - 2 and p_num <= page + 2) %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ p_num }}{% if q %}&q={{ q }}{% endif %}{% if month %}&month={{ month }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}">{{ p_num }}</a>
+              </li>
+            {% elif p_num == page - 3 or p_num == page + 3 %}
+              <li class="page-item disabled"><span class="page-link">…</span></li>
+            {% endif %}
+          {% endfor %}
+          <li class="page-item {% if page >= pages %}disabled{% endif %}">
+            <a class="page-link" href="?page={{ page + 1 }}{% if q %}&q={{ q }}{% endif %}{% if month %}&month={{ month }}{% endif %}{% if cat %}&cat={{ cat }}{% endif %}">
+              <i class="bi bi-chevron-left"></i>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

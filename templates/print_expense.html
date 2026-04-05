@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>سند مصروف {{ e.ref_no }}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: Arial, sans-serif; font-size: 13px; color: #111; }
+    .container { width: 680px; margin: 20px auto; border: 2px solid #922b21; border-radius: 8px; overflow: hidden; }
+    .header { background: #922b21; color: #fff; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 1.3rem; }
+    .title-bar { background: #c0392b; color: #fff; text-align: center; padding: 8px; font-size: 1rem; font-weight: bold; }
+    .body { padding: 24px; }
+    .info-row { display: flex; gap: 16px; margin-bottom: 16px; }
+    .info-box { flex: 1; background: #f9f9f9; border-radius: 6px; padding: 10px 14px; border: 1px solid #eee; }
+    .info-box label { font-size: .75rem; color: #888; }
+    .info-box span { display: block; font-weight: 600; font-size: 1rem; margin-top: 2px; }
+    .desc-box { background: #fff5f5; border: 1px solid #fadadd; border-radius: 6px; padding: 14px; margin-bottom: 16px; font-size: 1rem; }
+    .total-box { background: #922b21; color: #fff; border-radius: 6px; padding: 14px 20px; display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: bold; }
+    .footer { padding: 14px 20px; border-top: 1px dashed #ccc; display: flex; justify-content: space-between; font-size: .8rem; color: #666; }
+    @media print { .no-print { display: none; } }
+  </style>
+</head>
+<body>
+<div class="no-print" style="text-align:center;padding:12px">
+  <button onclick="window.print()" style="background:#922b21;color:#fff;border:none;padding:8px 24px;border-radius:6px;cursor:pointer">طباعة السند</button>
+  <button onclick="window.close()" style="background:#666;color:#fff;border:none;padding:8px 24px;border-radius:6px;cursor:pointer;margin-right:8px">إغلاق</button>
+</div>
+
+<div class="container">
+  <div class="header">
+    <div><h1>{{ company }}</h1><p style="font-size:.8rem;opacity:.8">نظام إدارة إعادة التدوير</p></div>
+    <div style="text-align:left">
+      <div style="font-size:1.5rem;font-weight:700">{{ e.ref_no or '---' }}</div>
+      <div style="font-size:.8rem;opacity:.8">رقم السند</div>
+    </div>
+  </div>
+  <div class="title-bar">سند صرف مصروف</div>
+  <div class="body">
+    <div class="info-row">
+      <div class="info-box"><label>التاريخ</label><span>{{ e.date }}</span></div>
+      <div class="info-box"><label>الفئة</label><span>{{ e.category_name }}</span></div>
+      <div class="info-box"><label>طريقة الدفع</label><span>{{ e.payment_method or 'كاش' }}</span></div>
+    </div>
+    <div class="desc-box">
+      <div style="font-size:.75rem;color:#888;margin-bottom:4px">البيان / الوصف</div>
+      <div style="font-size:1rem;font-weight:600">{{ e.description }}</div>
+    </div>
+    {% if e.notes %}<div style="background:#fffbea;border-right:3px solid #f39c12;padding:8px 12px;border-radius:4px;font-size:.85rem;margin-bottom:14px"><strong>ملاحظات:</strong> {{ e.notes }}</div>{% endif %}
+    <div class="total-box">
+      <span>المبلغ الإجمالي</span>
+      <span>{{ "{:,.2f}".format(e.amount_lyd or 0) }} د.ل</span>
+    </div>
+  </div>
+  <div class="footer">
+    <span>تاريخ الطباعة: <script>document.write(new Date().toLocaleDateString('ar-LY'))</script></span>
+    <span>توقيع المعتمد: ________________</span>
+    <span>توقيع المستلم: ________________</span>
+  </div>
+</div>
+</body>
+</html>

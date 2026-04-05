@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}التقارير الشهرية - ليبيكا ERP{% endblock %}
+
+{% block breadcrumb %}
+<i class="bi bi-bar-chart-line me-1"></i> التقارير الشهرية
+{% endblock %}
+
+{% block head %}
+<style>
+  .profit-pos { color: #16a34a; font-weight: 700; }
+  .profit-neg { color: #dc2626; font-weight: 700; }
+  tfoot td { font-weight: 700; background: #f8fafc; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Chart -->
+<div class="card table-card mb-4">
+  <div class="card-header bg-white border-bottom py-3">
+    <h6 class="mb-0 fw-semibold"><i class="bi bi-bar-chart-line me-2 text-primary"></i>الرسم البياني الشهري</h6>
+  </div>
+  <div class="card-body p-4">
+    <canvas id="monthlyChart" height="100"></canvas>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="table-card">
+  <div class="card-header bg-white border-bottom py-3">
+    <h6 class="mb-0 fw-semibold"><i class="bi bi-table me-2 text-primary"></i>تفاصيل الأشهر</h6>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th>الشهر</th>
+          <th class="text-end">المشتريات (د.ل)</th>
+          <th class="text-end">المبيعات (د.ل)</th>
+          <th class="text-end">تكلفة البضاعة</th>
+          <th class="text-end">مجمل الربح</th>
+          <th class="text-end">المصروفات</th>
+          <th class="text-end">صافي الربح</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if months_data %}
+          {% set ns = namespace(
+            t_purchases=0, t_sales=0, t_cogs=0,
+            t_gross=0, t_expenses=0, t_net=0
+          ) %}
+          {% for row in months_data %}
+          {% set ns.t_purchases = ns.t_purchases + (row.purchases or 0) %}
+          {% set ns.t_sales     = ns.t_sales     + (row.sales or 0)     %}
+          {% set ns.t_cogs      = ns.t_cogs      + (row.cogs or 0)      %}
+          {% set ns.t_gross     = ns.t_gross     + (row.gross_profit or 0) %}
+          {% set ns.t_expenses  = ns.t_expenses  + (row.expenses or 0)  %}
+          {% set ns.t_net       = ns.t_net       + (row.net_profit or 0) %}
+          <tr>
+            <td class="fw-semibold">{{ row.month }}</td>
+            <td class="text-end">{{ "{:,.2f}".format(row.purchases or 0) }}</td>
+            <td class="text-end amount-pos">{{ "{:,.2f}".format(row.sales or 0) }}</td>
+            <td class="text-end text-muted">{{ "{:,.2f}".format(row.cogs or 0) }}</td>
+            <td class="text-end {% if (row.gross_profit or 0) >= 0 %}amount-pos{% else %}amount-neg{% endif %}">
+              {{ "{:,.2f}".format(row.gross_profit or 0) }}
+            </td>
+            <td class="text-end amount-neg">{{ "{:,.2f}".format(row.expenses or 0) }}</td>
+            <td class="text-end {% if (row.net_profit or 0) >= 0 %}profit-pos{% else %}profit-neg{% endif %}">
+              {% if (row.net_profit or 0) >= 0 %}
+                <i class="bi bi-arrow-up-circle-fill me-1" style="color:#16a34a"></i>
+              {% else %}
+                <i class="bi bi-arrow-down-circle-fill me-1" style="color:#dc2626"></i>
+              {% endif %}
+              {{ "{:,.2f}".format(row.net_profit or 0) }}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted py-5">
+              <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+              لا توجد بيانات تقارير
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+      {% if months_data %}
+      <tfoot>
+        <tr>
+          <td>الإجمالي</td>
+          <td class="text-end">{{ "{:,.2f}".format(ns.t_purchases) }}</td>
+          <td class="text-end">{{ "{:,.2f}".format(ns.t_sales) }}</td>
+          <td class="text-end">{{ "{:,.2f}".format(ns.t_cogs) }}</td>
+          <td class="text-end {% if ns.t_gross >= 0 %}amount-pos{% else %}amount-neg{% endif %}">
+            {{ "{:,.2f}".format(ns.t_gross) }}
+          </td>
+          <td class="text-end amount-neg">{{ "{:,.2f}".format(ns.t_expenses) }}</td>
+          <td class="text-end {% if ns.t_net >= 0 %}profit-pos{% else %}profit-neg{% endif %}">
+            {{ "{:,.2f}".format(ns.t_net) }}
+          </td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const labels    = {{ months_data | map(attribute='month') | list | tojson }};
+  const sales     = {{ months_data | map(attribute='sales')       | list | tojson }};
+  const purchases = {{ months_data | map(attribute='purchases')   | list | tojson }};
+  const netProfit = {{ months_data | map(attribute='net_profit')  | list | tojson }};
+
+  const ctx = document.getElementById('monthlyChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'المبيعات',
+          data: sales,
+          backgroundColor: 'rgba(41,128,185,0.75)',
+          borderRadius: 4
+        },
+        {
+          label: 'المشتريات',
+          data: purchases,
+          backgroundColor: 'rgba(230,126,34,0.75)',
+          borderRadius: 4
+        },
+        {
+          label: 'صافي الربح',
+          data: netProfit,
+          type: 'line',
+          borderColor: '#16a34a',
+          backgroundColor: 'rgba(22,163,74,0.12)',
+          tension: 0.4,
+          fill: true,
+          pointRadius: 5,
+          pointBackgroundColor: '#16a34a',
+          yAxisID: 'y'
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString('ar-LY', {minimumFractionDigits:2}) + ' د.ل'
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: val => val.toLocaleString('ar-LY') + ' د.ل'
+          }
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}

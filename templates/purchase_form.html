@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}{% if purchase %}تعديل شراء{% else %}شراء جديد{% endif %} - ليبيكا ERP{% endblock %}
+
+{% block breadcrumb %}
+<i class="bi bi-cart-plus me-1"></i>
+<a href="/purchases" class="text-decoration-none text-secondary">المشتريات</a>
+<i class="bi bi-chevron-left mx-1" style="font-size:.75rem"></i>
+{% if purchase %}تعديل شراء #{{ purchase.ref_no }}{% else %}شراء جديد{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-xl-9 col-lg-10">
+
+    <div class="card table-card">
+      <div class="card-header bg-white border-bottom py-3 d-flex align-items-center gap-2">
+        <div class="icon bg-primary bg-opacity-10 text-primary" style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center">
+          <i class="bi bi-cart-plus"></i>
+        </div>
+        <h6 class="mb-0 fw-semibold">
+          {% if purchase %}تعديل بيانات الشراء{% else %}إضافة شراء جديد{% endif %}
+        </h6>
+      </div>
+      <div class="card-body p-4">
+
+        <form method="post"
+              action="{% if purchase %}/purchases/{{ purchase.id }}/edit{% else %}/purchases/new{% endif %}"
+              autocomplete="off">
+
+          <div class="row g-3">
+
+            <!-- Ref No -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">رقم الفاتورة <span class="text-danger">*</span></label>
+              <input type="text" name="ref_no" class="form-control"
+                     value="{{ purchase.ref_no if purchase else ref_no or '' }}" required>
+            </div>
+
+            <!-- Date -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">التاريخ <span class="text-danger">*</span></label>
+              <input type="date" name="date_" class="form-control"
+                     value="{{ purchase.date_ if purchase else '' }}" required>
+            </div>
+
+            <!-- Payment Method -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">طريقة الدفع</label>
+              <select name="payment_method" class="form-select">
+                <option value="كاش"   {% if purchase and purchase.payment_method == 'كاش'   %}selected{% endif %}>كاش</option>
+                <option value="مصرف"  {% if purchase and purchase.payment_method == 'مصرف'  %}selected{% endif %}>مصرف</option>
+                <option value="آجل"   {% if purchase and purchase.payment_method == 'آجل'   %}selected{% endif %}>آجل</option>
+              </select>
+            </div>
+
+            <!-- Supplier -->
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">المورد</label>
+              <input type="text" name="supplier_name" class="form-control" list="suppliers-list"
+                     placeholder="اختر أو اكتب اسم المورد"
+                     value="{{ purchase.supplier_name if purchase else '' }}">
+              <datalist id="suppliers-list">
+                {% for s in suppliers %}
+                  <option value="{{ s.name }}">
+                {% endfor %}
+              </datalist>
+            </div>
+
+            <!-- Item Name -->
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">اسم الصنف</label>
+              <input type="text" name="item_name" id="item_name" class="form-control" list="items-list"
+                     placeholder="اختر أو اكتب اسم الصنف"
+                     value="{{ purchase.item_name if purchase else '' }}">
+              <datalist id="items-list">
+                {% for it in items %}
+                  <option value="{{ it.name }}" data-code="{{ it.code }}">
+                {% endfor %}
+              </datalist>
+            </div>
+
+            <!-- Item Code -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">كود الصنف</label>
+              <input type="text" name="item_code" id="item_code" class="form-control"
+                     value="{{ purchase.item_code if purchase else '' }}">
+            </div>
+
+            <!-- Gross Weight -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">الوزن الإجمالي (كجم)</label>
+              <input type="number" name="gross_weight" id="gross_weight" class="form-control"
+                     step="0.01" min="0"
+                     value="{{ purchase.gross_weight if purchase else '' }}"
+                     oninput="calcNet()">
+            </div>
+
+            <!-- Tare Weight -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">وزن التغليف (كجم)</label>
+              <input type="number" name="tare_weight" id="tare_weight" class="form-control"
+                     step="0.01" min="0"
+                     value="{{ purchase.tare_weight if purchase else '' }}"
+                     oninput="calcNet()">
+            </div>
+
+            <!-- Net Weight (auto) -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">الوزن الصافي (كجم)</label>
+              <div class="input-group">
+                <input type="number" name="net_weight" id="net_weight" class="form-control bg-light"
+                       step="0.01" min="0"
+                       value="{{ purchase.net_weight if purchase else '' }}"
+                       oninput="calcAmount()">
+                <span class="input-group-text text-muted"><i class="bi bi-calculator"></i></span>
+              </div>
+              <div class="form-text text-info">يُحسب تلقائياً = إجمالي − تغليف</div>
+            </div>
+
+            <!-- Unit Price -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">سعر الكيلو (د.ل)</label>
+              <input type="number" name="unit_price" id="unit_price" class="form-control"
+                     step="0.01" min="0"
+                     value="{{ purchase.unit_price if purchase else '' }}"
+                     oninput="calcAmount()">
+            </div>
+
+            <!-- Amount LYD (auto) -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">المبلغ الإجمالي (د.ل)</label>
+              <div class="input-group">
+                <input type="number" name="amount_lyd" id="amount_lyd" class="form-control bg-light fw-bold"
+                       step="0.01" min="0"
+                       value="{{ purchase.amount_lyd if purchase else '' }}"
+                       oninput="">
+                <span class="input-group-text text-muted"><i class="bi bi-calculator"></i></span>
+              </div>
+              <div class="form-text text-info">يُحسب تلقائياً = صافي × سعر</div>
+            </div>
+
+            <!-- Paid -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">المبلغ المدفوع (د.ل)</label>
+              <input type="number" name="paid" class="form-control"
+                     step="0.01" min="0"
+                     value="{{ purchase.paid if purchase else '0' }}">
+            </div>
+
+            <!-- Notes -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">ملاحظات</label>
+              <textarea name="notes" class="form-control" rows="3"
+                        placeholder="أي ملاحظات إضافية...">{{ purchase.notes if purchase else '' }}</textarea>
+            </div>
+
+          </div><!-- /row -->
+
+          <hr class="my-4">
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="/purchases" class="btn btn-outline-secondary px-4">
+              <i class="bi bi-x-lg me-1"></i> إلغاء
+            </a>
+            <button type="submit" class="btn btn-success px-5">
+              <i class="bi bi-check-lg me-1"></i>
+              {% if purchase %}حفظ التعديلات{% else %}حفظ الشراء{% endif %}
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function calcNet() {
+    const gross = parseFloat(document.getElementById('gross_weight').value) || 0;
+    const tare  = parseFloat(document.getElementById('tare_weight').value)  || 0;
+    const net   = Math.max(0, gross - tare);
+    document.getElementById('net_weight').value = net.toFixed(2);
+    calcAmount();
+  }
+
+  function calcAmount() {
+    const net   = parseFloat(document.getElementById('net_weight').value)  || 0;
+    const price = parseFloat(document.getElementById('unit_price').value)  || 0;
+    document.getElementById('amount_lyd').value = (net * price).toFixed(2);
+  }
+
+  // Auto-fill item code when item name is selected from datalist
+  document.getElementById('item_name').addEventListener('input', function () {
+    const val = this.value;
+    const opt = document.querySelector('#items-list option[value="' + val + '"]');
+    if (opt) {
+      document.getElementById('item_code').value = opt.dataset.code || '';
+    }
+  });
+</script>
+{% endblock %}

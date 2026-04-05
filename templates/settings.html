@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}الإعدادات - ليبيكا ERP{% endblock %}
+
+{% block breadcrumb %}
+<i class="bi bi-gear me-1"></i> الإعدادات
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-xl-7 col-lg-9">
+
+    <div class="card table-card">
+      <div class="card-header bg-white border-bottom py-3 d-flex align-items-center gap-2">
+        <div class="icon bg-secondary bg-opacity-10 text-secondary" style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center">
+          <i class="bi bi-gear"></i>
+        </div>
+        <h6 class="mb-0 fw-semibold">إعدادات النظام</h6>
+      </div>
+      <div class="card-body p-4">
+
+        <form method="post" action="/settings">
+
+          <!-- Company Info Section -->
+          <div class="mb-4">
+            <h6 class="text-muted fw-semibold mb-3 pb-2 border-bottom">
+              <i class="bi bi-building me-2"></i>بيانات الشركة
+            </h6>
+            <div class="row g-3">
+
+              <div class="col-sm-8">
+                <label class="form-label fw-semibold">اسم الشركة / المؤسسة</label>
+                <input type="text" name="company_name" class="form-control"
+                       placeholder="مثال: ليبيكا للتجارة"
+                       value="{{ settings.get('company_name', '') if settings else '' }}">
+              </div>
+
+              <div class="col-sm-4">
+                <label class="form-label fw-semibold">العملة</label>
+                <input type="text" name="currency" class="form-control"
+                       placeholder="مثال: د.ل"
+                       value="{{ settings.get('currency', 'د.ل') if settings else 'د.ل' }}">
+              </div>
+
+              <div class="col-sm-6">
+                <label class="form-label fw-semibold">نوع النشاط التجاري</label>
+                <input type="text" name="business_type" class="form-control"
+                       placeholder="مثال: تجارة مواد غذائية"
+                       value="{{ settings.get('business_type', '') if settings else '' }}">
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Contact Section -->
+          <div class="mb-4">
+            <h6 class="text-muted fw-semibold mb-3 pb-2 border-bottom">
+              <i class="bi bi-whatsapp me-2"></i>بيانات التواصل
+            </h6>
+            <div class="row g-3">
+
+              <div class="col-sm-6">
+                <label class="form-label fw-semibold">رقم واتساب 1</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-success text-white">
+                    <i class="bi bi-whatsapp"></i>
+                  </span>
+                  <input type="text" name="whatsapp1" class="form-control" dir="ltr"
+                         placeholder="+218 9x xxx xxxx"
+                         value="{{ settings.get('whatsapp1', '') if settings else '' }}">
+                </div>
+              </div>
+
+              <div class="col-sm-6">
+                <label class="form-label fw-semibold">رقم واتساب 2</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-success text-white">
+                    <i class="bi bi-whatsapp"></i>
+                  </span>
+                  <input type="text" name="whatsapp2" class="form-control" dir="ltr"
+                         placeholder="+218 9x xxx xxxx"
+                         value="{{ settings.get('whatsapp2', '') if settings else '' }}">
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <hr class="my-4">
+          <div class="d-flex gap-2 justify-content-end">
+            <button type="reset" class="btn btn-outline-secondary px-4">
+              <i class="bi bi-arrow-counterclockwise me-1"></i> إعادة تعيين
+            </button>
+            <button type="submit" class="btn btn-primary px-5">
+              <i class="bi bi-floppy me-1"></i> حفظ الإعدادات
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

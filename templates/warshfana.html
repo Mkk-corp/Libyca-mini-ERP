@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}ورشفانة - ليبيكا{% endblock %}
+{% block breadcrumb %}ورشفانة - حسابات سيدي السايح{% endblock %}
+
+{% block content %}
+
+<!-- بطاقات الإحصائيات -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="icon bg-primary bg-opacity-10 text-primary"><i class="bi bi-receipt"></i></div>
+        <div>
+          <div class="text-muted" style="font-size:.8rem">إجمالي الفواتير</div>
+          <div class="fw-bold fs-5">{{ "{:,.1f}".format(total_amount) }} د.ل</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="icon bg-warning bg-opacity-10 text-warning"><i class="bi bi-truck"></i></div>
+        <div>
+          <div class="text-muted" style="font-size:.8rem">إجمالي خصم السواق</div>
+          <div class="fw-bold fs-5">{{ "{:,.1f}".format(total_disc) }} د.ل</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="icon bg-success bg-opacity-10 text-success"><i class="bi bi-cash-coin"></i></div>
+        <div>
+          <div class="text-muted" style="font-size:.8rem">إجمالي المدفوع</div>
+          <div class="fw-bold fs-5">{{ "{:,.1f}".format(total_paid) }} د.ل</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="icon bg-danger bg-opacity-10 text-danger"><i class="bi bi-hourglass-split"></i></div>
+        <div>
+          <div class="text-muted" style="font-size:.8rem">المستحق للدفع</div>
+          <div class="fw-bold fs-5 {% if total_remain > 0 %}amount-neg{% else %}amount-pos{% endif %}">
+            {{ "{:,.1f}".format(total_remain) }} د.ل
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- زر الإضافة -->
+<div class="d-flex justify-content-end mb-3">
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addModal">
+    <i class="bi bi-plus-lg me-1"></i> إضافة سجل
+  </button>
+</div>
+
+<!-- الجدول -->
+<div class="table-card">
+  <table class="table table-hover mb-0 text-center">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>التاريخ</th>
+        <th>الصنف</th>
+        <th>الوزن (كجم)</th>
+        <th>سعر الكيلو</th>
+        <th>الإجمالي</th>
+        <th>خصم السواق</th>
+        <th>مدفوع</th>
+        <th>مستحق للدفع</th>
+        <th>ملاحظات</th>
+        <th class="no-print"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in records %}
+      <tr>
+        <td class="text-muted">{{ loop.index }}</td>
+        <td>{{ r.date if r.date else "-" }}</td>
+        <td><span class="badge bg-secondary">{{ r.item_type }}</span></td>
+        <td>{{ "{:,.1f}".format(r.weight) if r.weight else "-" }}</td>
+        <td>{{ "{:,.2f}".format(r.price_per_kg) if r.price_per_kg else "-" }}</td>
+        <td class="fw-semibold">{{ "{:,.2f}".format(r.total) }}</td>
+        <td class="text-warning">{{ "{:,.2f}".format(r.driver_discount) if r.driver_discount else "-" }}</td>
+        <td class="amount-pos">{{ "{:,.2f}".format(r.paid) if r.paid else "-" }}</td>
+        <td class="{% if r.remaining > 0 %}amount-neg{% else %}amount-pos{% endif %}">
+          {{ "{:,.2f}".format(r.remaining) }}
+        </td>
+        <td class="text-muted" style="font-size:.85rem">{{ r.notes or "" }}</td>
+        <td class="no-print">
+          <form method="post" action="/warshfana/{{ r.id }}/delete" class="delete-form d-inline">
+            <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="11" class="text-center text-muted py-4">لا توجد سجلات</td></tr>
+      {% endfor %}
+    </tbody>
+    {% if records %}
+    <tfoot class="table-light fw-bold">
+      <tr>
+        <td colspan="3">الإجمالي</td>
+        <td>{{ "{:,.1f}".format(records | sum(attribute='weight')) }}</td>
+        <td>-</td>
+        <td>{{ "{:,.2f}".format(total_amount) }}</td>
+        <td class="text-warning">{{ "{:,.2f}".format(total_disc) }}</td>
+        <td class="amount-pos">{{ "{:,.2f}".format(total_paid) }}</td>
+        <td class="amount-neg">{{ "{:,.2f}".format(total_remain) }}</td>
+        <td colspan="2"></td>
+      </tr>
+    </tfoot>
+    {% endif %}
+  </table>
+</div>
+
+<!-- Modal إضافة -->
+<div class="modal fade" id="addModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="post" action="/warshfana/new" class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">إضافة سجل ورشفانة</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-6">
+            <label class="form-label">التاريخ</label>
+            <input type="date" name="date_" class="form-control">
+          </div>
+          <div class="col-6">
+            <label class="form-label">الصنف</label>
+            <input type="text" name="item_type" class="form-control" placeholder="مكبوس / مرحية..." required>
+          </div>
+          <div class="col-6">
+            <label class="form-label">الوزن (كجم)</label>
+            <input type="number" name="weight" step="0.01" class="form-control" value="0">
+          </div>
+          <div class="col-6">
+            <label class="form-label">سعر الكيلو</label>
+            <input type="number" name="price_per_kg" step="0.01" class="form-control" value="0">
+          </div>
+          <div class="col-4">
+            <label class="form-label">الإجمالي</label>
+            <input type="number" name="total" step="0.01" class="form-control" value="0" required>
+          </div>
+          <div class="col-4">
+            <label class="form-label">خصم السواق</label>
+            <input type="number" name="driver_discount" step="0.01" class="form-control" value="0">
+          </div>
+          <div class="col-4">
+            <label class="form-label">مدفوع</label>
+            <input type="number" name="paid" step="0.01" class="form-control" value="0">
+          </div>
+          <div class="col-12">
+            <label class="form-label">ملاحظات</label>
+            <input type="text" name="notes" class="form-control">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+        <button type="submit" class="btn btn-primary">حفظ</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

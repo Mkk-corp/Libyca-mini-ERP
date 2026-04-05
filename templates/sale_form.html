@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+
+{% block title %}{% if sale %}تعديل بيع{% else %}بيع جديد{% endif %} - ليبيكا ERP{% endblock %}
+
+{% block breadcrumb %}
+<i class="bi bi-bag-check me-1"></i>
+<a href="/sales" class="text-decoration-none text-secondary">المبيعات</a>
+<i class="bi bi-chevron-left mx-1" style="font-size:.75rem"></i>
+{% if sale %}تعديل بيع #{{ sale.ref_no }}{% else %}بيع جديد{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-xl-9 col-lg-10">
+
+    <div class="card table-card">
+      <div class="card-header bg-white border-bottom py-3 d-flex align-items-center gap-2">
+        <div class="icon bg-success bg-opacity-10 text-success" style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center">
+          <i class="bi bi-bag-check"></i>
+        </div>
+        <h6 class="mb-0 fw-semibold">
+          {% if sale %}تعديل بيانات البيع{% else %}إضافة بيع جديد{% endif %}
+        </h6>
+      </div>
+      <div class="card-body p-4">
+
+        <form method="post"
+              action="{% if sale %}/sales/{{ sale.id }}/edit{% else %}/sales/new{% endif %}"
+              autocomplete="off">
+
+          <div class="row g-3">
+
+            <!-- Ref No -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">رقم الفاتورة <span class="text-danger">*</span></label>
+              <input type="text" name="ref_no" class="form-control"
+                     value="{{ sale.ref_no if sale else ref_no or '' }}" required>
+            </div>
+
+            <!-- Date -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">التاريخ <span class="text-danger">*</span></label>
+              <input type="date" name="date_" class="form-control"
+                     value="{{ sale.date_ if sale else '' }}" required>
+            </div>
+
+            <!-- Payment Method -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">طريقة الدفع</label>
+              <select name="payment_method" class="form-select">
+                <option value="كاش"  {% if sale and sale.payment_method == 'كاش'  %}selected{% endif %}>كاش</option>
+                <option value="مصرف" {% if sale and sale.payment_method == 'مصرف' %}selected{% endif %}>مصرف</option>
+                <option value="آجل"  {% if sale and sale.payment_method == 'آجل'  %}selected{% endif %}>آجل</option>
+              </select>
+            </div>
+
+            <!-- Customer -->
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">العميل</label>
+              <input type="text" name="customer_name" class="form-control" list="customers-list"
+                     placeholder="اختر أو اكتب اسم العميل"
+                     value="{{ sale.customer_name if sale else '' }}">
+              <datalist id="customers-list">
+                {% for c in customers %}
+                  <option value="{{ c.name }}">
+                {% endfor %}
+              </datalist>
+            </div>
+
+            <!-- Item Name -->
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">اسم الصنف</label>
+              <input type="text" name="item_name" id="item_name" class="form-control" list="items-list"
+                     placeholder="اختر أو اكتب اسم الصنف"
+                     value="{{ sale.item_name if sale else '' }}">
+              <datalist id="items-list">
+                {% for it in items %}
+                  <option value="{{ it.name }}" data-code="{{ it.code }}">
+                {% endfor %}
+              </datalist>
+            </div>
+
+            <!-- Item Code -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">كود الصنف</label>
+              <input type="text" name="item_code" id="item_code" class="form-control"
+                     value="{{ sale.item_code if sale else '' }}">
+            </div>
+
+            <!-- Quantity -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">الكمية (كجم) <span class="text-danger">*</span></label>
+              <input type="number" name="quantity" id="quantity" class="form-control"
+                     step="0.01" min="0"
+                     value="{{ sale.quantity if sale else '' }}"
+                     oninput="calcAmount()" required>
+            </div>
+
+            <!-- Unit Price -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">سعر الكيلو (د.ل) <span class="text-danger">*</span></label>
+              <input type="number" name="unit_price" id="unit_price" class="form-control"
+                     step="0.01" min="0"
+                     value="{{ sale.unit_price if sale else '' }}"
+                     oninput="calcAmount()" required>
+            </div>
+
+            <!-- Amount LYD (auto) -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">المبلغ الإجمالي (د.ل)</label>
+              <div class="input-group">
+                <input type="number" name="amount_lyd" id="amount_lyd" class="form-control bg-light fw-bold"
+                       step="0.01" min="0"
+                       value="{{ sale.amount_lyd if sale else '' }}">
+                <span class="input-group-text text-muted"><i class="bi bi-calculator"></i></span>
+              </div>
+              <div class="form-text text-info">يُحسب تلقائياً = كمية × سعر</div>
+            </div>
+
+            <!-- COGS -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">تكلفة البضاعة (د.ل)</label>
+              <input type="number" name="cogs" class="form-control"
+                     step="0.01" min="0"
+                     value="{{ sale.cogs if sale else '' }}">
+            </div>
+
+            <!-- Paid -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">المبلغ المدفوع (د.ل)</label>
+              <input type="number" name="paid" class="form-control"
+                     step="0.01" min="0"
+                     value="{{ sale.paid if sale else '0' }}">
+            </div>
+
+            <!-- Notes -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">ملاحظات</label>
+              <textarea name="notes" class="form-control" rows="3"
+                        placeholder="أي ملاحظات إضافية...">{{ sale.notes if sale else '' }}</textarea>
+            </div>
+
+          </div><!-- /row -->
+
+          <hr class="my-4">
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="/sales" class="btn btn-outline-secondary px-4">
+              <i class="bi bi-x-lg me-1"></i> إلغاء
+            </a>
+            <button type="submit" class="btn btn-success px-5">
+              <i class="bi bi-check-lg me-1"></i>
+              {% if sale %}حفظ التعديلات{% else %}حفظ البيع{% endif %}
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function calcAmount() {
+    const qty   = parseFloat(document.getElementById('quantity').value)   || 0;
+    const price = parseFloat(document.getElementById('unit_price').value) || 0;
+    document.getElementById('amount_lyd').value = (qty * price).toFixed(2);
+  }
+
+  // Auto-fill item code when item name selected from datalist
+  document.getElementById('item_name').addEventListener('input', function () {
+    const val = this.value;
+    const opt = document.querySelector('#items-list option[value="' + val + '"]');
+    if (opt) {
+      document.getElementById('item_code').value = opt.dataset.code || '';
+    }
+  });
+</script>
+{% endblock %}

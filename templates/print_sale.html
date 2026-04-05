@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>فاتورة بيع {{ s.ref_no }}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: Arial, sans-serif; font-size: 13px; color: #111; background: #fff; }
+    .container { width: 720px; margin: 20px auto; border: 2px solid #1e8449; border-radius: 8px; overflow: hidden; }
+    .header { background: #1e8449; color: #fff; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 1.3rem; margin-bottom: 2px; }
+    .title-bar { background: #27ae60; color: #fff; text-align: center; padding: 8px; font-size: 1rem; font-weight: bold; }
+    .body { padding: 20px; }
+    .info-row { display: flex; gap: 20px; margin-bottom: 16px; }
+    .info-box { flex: 1; background: #f4f6f9; border-radius: 6px; padding: 10px 14px; }
+    .info-box label { font-size: .75rem; color: #666; }
+    .info-box span { display: block; font-weight: 600; font-size: .95rem; margin-top: 2px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    th { background: #1e8449; color: #fff; padding: 8px; text-align: center; font-size: .85rem; }
+    td { padding: 8px; text-align: center; border-bottom: 1px solid #e2e8f0; }
+    .total-box { background: #1e8449; color: #fff; border-radius: 6px; padding: 12px 20px; display: flex; justify-content: space-between; font-size: 1.1rem; font-weight: bold; }
+    .footer { padding: 14px 20px; border-top: 1px dashed #ccc; display: flex; justify-content: space-between; font-size: .8rem; color: #666; }
+    @media print { .no-print { display: none; } }
+  </style>
+</head>
+<body>
+<div class="no-print" style="text-align:center;padding:12px">
+  <button onclick="window.print()" style="background:#1e8449;color:#fff;border:none;padding:8px 24px;border-radius:6px;cursor:pointer">طباعة الفاتورة</button>
+  <button onclick="window.close()" style="background:#666;color:#fff;border:none;padding:8px 24px;border-radius:6px;cursor:pointer;margin-right:8px">إغلاق</button>
+</div>
+
+<div class="container">
+  <div class="header">
+    <div><h1>{{ company }}</h1><p style="font-size:.8rem;opacity:.8">نظام إدارة إعادة التدوير</p></div>
+    <div style="text-align:left">
+      <div style="font-size:1.5rem;font-weight:700">{{ s.ref_no or '---' }}</div>
+      <div style="font-size:.8rem;opacity:.8">رقم الفاتورة</div>
+    </div>
+  </div>
+  <div class="title-bar">فاتورة بيع</div>
+  <div class="body">
+    <div class="info-row">
+      <div class="info-box"><label>التاريخ</label><span>{{ s.date }}</span></div>
+      <div class="info-box"><label>اسم العميل</label><span>{{ s.customer_name }}</span></div>
+      <div class="info-box"><label>طريقة الدفع</label><span>{{ s.payment_method or '---' }}</span></div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>الصنف</th><th>الكمية (كجم)</th><th>سعر/كجم (د.ل)</th><th>الإجمالي (د.ل)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>{{ s.item_name }}</strong></td>
+          <td>{{ "{:,.2f}".format(s.quantity or 0) }}</td>
+          <td>{{ "{:,.3f}".format(s.unit_price or 0) }}</td>
+          <td><strong>{{ "{:,.2f}".format(s.amount_lyd or 0) }}</strong></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="info-row">
+      <div class="info-box"><label>المبلغ المدفوع</label><span style="color:#1e8449">{{ "{:,.2f}".format(s.paid or 0) }} د.ل</span></div>
+      <div class="info-box"><label>المبلغ المتبقي</label><span style="color:{% if (s.remaining or 0) > 0 %}#e74c3c{% else %}#1e8449{% endif %}">{{ "{:,.2f}".format(s.remaining or 0) }} د.ل</span></div>
+    </div>
+    {% if s.notes %}<div style="background:#fffbea;border-right:3px solid #f39c12;padding:8px 12px;border-radius:4px;font-size:.85rem;margin-bottom:12px"><strong>ملاحظات:</strong> {{ s.notes }}</div>{% endif %}
+    <div class="total-box">
+      <span>إجمالي الفاتورة</span>
+      <span>{{ "{:,.2f}".format(s.amount_lyd or 0) }} د.ل</span>
+    </div>
+  </div>
+  <div class="footer">
+    <span>تاريخ الطباعة: <script>document.write(new Date().toLocaleDateString('ar-LY'))</script></span>
+    <span>توقيع المستلم: ________________</span>
+    <span>توقيع البائع: ________________</span>
+  </div>
+</div>
+</body>
+</html>

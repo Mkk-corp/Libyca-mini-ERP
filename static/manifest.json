@@ -1,0 +1,44 @@
+{
+  "name": "ليبيكا ERP",
+  "short_name": "ليبيكا",
+  "description": "نظام إدارة متكامل - ليبيكا",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a5276",
+  "theme_color": "#1a5276",
+  "lang": "ar",
+  "dir": "rtl",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "المشتريات",
+      "url": "/purchases",
+      "description": "سجل عملية شراء جديدة"
+    },
+    {
+      "name": "المبيعات",
+      "url": "/sales",
+      "description": "سجل عملية بيع جديدة"
+    },
+    {
+      "name": "المصروفات",
+      "url": "/expenses",
+      "description": "سجل مصروف جديد"
+    }
+  ],
+  "categories": ["business", "finance", "productivity"]
+}

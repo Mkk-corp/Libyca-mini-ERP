@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}الأصناف - ليبيكا ERP{% endblock %}
+
+{% block breadcrumb %}
+<i class="bi bi-tags me-1"></i> الأصناف
+{% endblock %}
+
+{% block content %}
+
+<!-- Stats + Action Bar -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-lg-4">
+    <div class="card stat-card h-100">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="icon bg-warning bg-opacity-10 text-warning">
+          <i class="bi bi-tags"></i>
+        </div>
+        <div>
+          <div class="text-muted" style="font-size:.8rem">إجمالي الأصناف</div>
+          <div class="fw-bold fs-5">{{ total | default(0) }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-8 d-flex align-items-center justify-content-sm-end">
+    <a href="/items/new" class="btn btn-success px-4">
+      <i class="bi bi-plus-lg me-1"></i> إضافة صنف
+    </a>
+  </div>
+</div>
+
+<!-- Search -->
+<div class="card table-card mb-4">
+  <div class="card-body py-3">
+    <form method="get" action="/items" class="row g-2 align-items-end">
+      <div class="col-sm-8">
+        <label class="form-label small text-muted mb-1">بحث</label>
+        <div class="input-group">
+          <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+          <input type="text" name="q" class="form-control" placeholder="الاسم، الكود، الفئة..." value="{{ q or '' }}">
+        </div>
+      </div>
+      <div class="col-sm-2">
+        <button type="submit" class="btn btn-primary w-100">
+          <i class="bi bi-funnel me-1"></i> بحث
+        </button>
+      </div>
+      <div class="col-sm-2">
+        <a href="/items" class="btn btn-outline-secondary w-100">
+          <i class="bi bi-x-lg me-1"></i> مسح
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th>الكود</th>
+          <th>الاسم</th>
+          <th>الفئة</th>
+          <th class="text-end">متوسط التكلفة (د.ل)</th>
+          <th class="text-center">نشط</th>
+          <th class="text-center">إجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if items %}
+          {% for it in items %}
+          <tr>
+            <td><code class="text-warning">{{ it.code or '—' }}</code></td>
+            <td class="fw-semibold">{{ it.name }}</td>
+            <td>
+              <span class="badge bg-secondary bg-opacity-10 text-secondary">{{ it.category or '—' }}</span>
+            </td>
+            <td class="text-end">{{ "{:,.2f}".format(it.avg_cost or 0) }}</td>
+            <td class="text-center">
+              {% if it.active %}
+                <span class="badge bg-success"><i class="bi bi-check-lg"></i> نشط</span>
+              {% else %}
+                <span class="badge bg-secondary">غير نشط</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <div class="d-flex gap-1 justify-content-center">
+                <a href="/items/{{ it.id }}/edit" class="btn btn-sm btn-outline-primary" title="تعديل">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <form method="post" action="/items/{{ it.id }}/delete" class="delete-form d-inline">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="6" class="text-center text-muted py-5">
+              <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+              لا توجد أصناف مسجلة
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if pages and pages > 1 %}
+  <div class="card-footer bg-white border-top py-3">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="text-muted" style="font-size:.85rem">
+        صفحة {{ page }} من {{ pages }} — إجمالي {{ total }} صنف
+      </div>
+      <nav>
+        <ul class="pagination pagination-sm mb-0 gap-1">
+          <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+            <a class="page-link" href="?page={{ page - 1 }}{% if q %}&q={{ q }}{% endif %}">
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          </li>
+          {% for p_num in range(1, pages + 1) %}
+            {% if p_num == page %}
+              <li class="page-item active"><span class="page-link">{{ p_num }}</span></li>
+            {% elif p_num == 1 or p_num == pages or (p_num >= page - 2 and p_num <= page + 2) %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ p_num }}{% if q %}&q={{ q }}{% endif %}">{{ p_num }}</a>
+              </li>
+            {% elif p_num == page - 3 or p_num == page + 3 %}
+              <li class="page-item disabled"><span class="page-link">…</span></li>
+            {% endif %}
+          {% endfor %}
+          <li class="page-item {% if page >= pages %}disabled{% endif %}">
+            <a class="page-link" href="?page={{ page + 1 }}{% if q %}&q={{ q }}{% endif %}">
+              <i class="bi bi-chevron-left"></i>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

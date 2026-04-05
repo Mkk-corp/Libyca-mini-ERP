@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}الموظفون - ليبيكا ERP{% endblock %}
+
+{% block breadcrumb %}
+<i class="bi bi-person-badge me-1"></i> الموظفون
+{% endblock %}
+
+{% block content %}
+
+<!-- Stats + Action Bar -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-lg-4">
+    <div class="card stat-card h-100">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="icon bg-primary bg-opacity-10 text-primary">
+          <i class="bi bi-person-badge"></i>
+        </div>
+        <div>
+          <div class="text-muted" style="font-size:.8rem">إجمالي الموظفين</div>
+          <div class="fw-bold fs-5">{{ total | default(0) }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-8 d-flex align-items-center justify-content-sm-end">
+    <a href="/employees/new" class="btn btn-success px-4">
+      <i class="bi bi-plus-lg me-1"></i> إضافة موظف
+    </a>
+  </div>
+</div>
+
+<!-- Search -->
+<div class="card table-card mb-4">
+  <div class="card-body py-3">
+    <form method="get" action="/employees" class="row g-2 align-items-end">
+      <div class="col-sm-8">
+        <label class="form-label small text-muted mb-1">بحث</label>
+        <div class="input-group">
+          <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+          <input type="text" name="q" class="form-control" placeholder="الاسم، الكود، القسم..." value="{{ q or '' }}">
+        </div>
+      </div>
+      <div class="col-sm-2">
+        <button type="submit" class="btn btn-primary w-100">
+          <i class="bi bi-funnel me-1"></i> بحث
+        </button>
+      </div>
+      <div class="col-sm-2">
+        <a href="/employees" class="btn btn-outline-secondary w-100">
+          <i class="bi bi-x-lg me-1"></i> مسح
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th>الكود</th>
+          <th>الاسم</th>
+          <th>القسم</th>
+          <th class="text-end">الراتب الأساسي</th>
+          <th class="text-end">راتب الوردية</th>
+          <th class="text-end">خصومات</th>
+          <th>طريقة الدفع</th>
+          <th class="text-center">نشط</th>
+          <th class="text-center">إجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if employees %}
+          {% for e in employees %}
+          <tr>
+            <td><code class="text-primary">{{ e.code or '—' }}</code></td>
+            <td class="fw-semibold">{{ e.name }}</td>
+            <td>{{ e.department or '—' }}</td>
+            <td class="text-end">{{ "{:,.2f}".format(e.basic_salary or 0) }}</td>
+            <td class="text-end">{{ "{:,.2f}".format(e.shift_salary or 0) }}</td>
+            <td class="text-end amount-neg">{{ "{:,.2f}".format(e.fixed_deductions or 0) }}</td>
+            <td>
+              <span class="badge
+                {% if e.payment_method == 'كاش' %}bg-success
+                {% elif e.payment_method == 'مصرف' %}bg-primary
+                {% else %}bg-warning text-dark{% endif %}
+                bg-opacity-75">
+                {{ e.payment_method or '—' }}
+              </span>
+            </td>
+            <td class="text-center">
+              {% if e.active %}
+                <span class="badge bg-success"><i class="bi bi-check-lg"></i> نشط</span>
+              {% else %}
+                <span class="badge bg-secondary">غير نشط</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              <div class="d-flex gap-1 justify-content-center">
+                <a href="/employees/{{ e.id }}/edit" class="btn btn-sm btn-outline-primary" title="تعديل">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <form method="post" action="/employees/{{ e.id }}/delete" class="delete-form d-inline">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="9" class="text-center text-muted py-5">
+              <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+              لا يوجد موظفون مسجلون
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if pages and pages > 1 %}
+  <div class="card-footer bg-white border-top py-3">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="text-muted" style="font-size:.85rem">
+        صفحة {{ page }} من {{ pages }} — إجمالي {{ total }} موظف
+      </div>
+      <nav>
+        <ul class="pagination pagination-sm mb-0 gap-1">
+          <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+            <a class="page-link" href="?page={{ page - 1 }}{% if q %}&q={{ q }}{% endif %}">
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          </li>
+          {% for p_num in range(1, pages + 1) %}
+            {% if p_num == page %}
+              <li class="page-item active"><span class="page-link">{{ p_num }}</span></li>
+            {% elif p_num == 1 or p_num == pages or (p_num >= page - 2 and p_num <= page + 2) %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ p_num }}{% if q %}&q={{ q }}{% endif %}">{{ p_num }}</a>
+              </li>
+            {% elif p_num == page - 3 or p_num == page + 3 %}
+              <li class="page-item disabled"><span class="page-link">…</span></li>
+            {% endif %}
+          {% endfor %}
+          <li class="page-item {% if page >= pages %}disabled{% endif %}">
+            <a class="page-link" href="?page={{ page + 1 }}{% if q %}&q={{ q }}{% endif %}">
+              <i class="bi bi-chevron-left"></i>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

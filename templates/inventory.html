@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}المخزون - ليبيكا ERP{% endblock %}
+
+{% block breadcrumb %}
+<i class="bi bi-boxes me-1"></i> المخزون
+{% endblock %}
+
+{% block content %}
+
+<!-- KPI -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-lg-4">
+    <div class="card stat-card h-100">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="icon bg-primary bg-opacity-10 text-primary">
+          <i class="bi bi-boxes"></i>
+        </div>
+        <div>
+          <div class="text-muted" style="font-size:.8rem">عدد الأصناف</div>
+          <div class="fw-bold fs-5">{{ inventory_data | length }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-4">
+    <div class="card stat-card h-100">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="icon bg-success bg-opacity-10 text-success">
+          <i class="bi bi-currency-dollar"></i>
+        </div>
+        <div>
+          <div class="text-muted" style="font-size:.8rem">إجمالي قيمة المخزون (د.ل)</div>
+          <div class="fw-bold fs-5 amount-pos">{{ "{:,.2f}".format(total_value | default(0)) }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4 d-flex align-items-center justify-content-lg-end no-print">
+    <button onclick="window.print()" class="btn btn-outline-secondary px-4">
+      <i class="bi bi-printer me-1"></i> طباعة
+    </button>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="table-card">
+  <div class="card-header bg-white border-bottom py-3">
+    <h6 class="mb-0 fw-semibold"><i class="bi bi-table me-2 text-primary"></i>تقرير المخزون الحالي</h6>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th>الكود</th>
+          <th>الصنف</th>
+          <th>الفئة</th>
+          <th class="text-end">المشتريات (كجم)</th>
+          <th class="text-end">المبيعات (كجم)</th>
+          <th class="text-end">المخزون (كجم)</th>
+          <th class="text-end">متوسط التكلفة</th>
+          <th class="text-end">قيمة المخزون (د.ل)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if inventory_data %}
+          {% for row in inventory_data %}
+          <tr>
+            <td><code class="text-primary">{{ row.code or '—' }}</code></td>
+            <td class="fw-semibold">{{ row.name }}</td>
+            <td>
+              <span class="badge bg-secondary bg-opacity-10 text-secondary">{{ row.category or '—' }}</span>
+            </td>
+            <td class="text-end">{{ "{:,.2f}".format(row.bought or 0) }}</td>
+            <td class="text-end">{{ "{:,.2f}".format(row.sold or 0) }}</td>
+            <td class="text-end fw-bold
+              {% if (row.stock or 0) > 0 %}text-success
+              {% elif (row.stock or 0) < 0 %}text-danger
+              {% else %}text-muted{% endif %}">
+              {{ "{:,.2f}".format(row.stock or 0) }}
+            </td>
+            <td class="text-end text-muted">{{ "{:,.2f}".format(row.avg_cost or 0) }}</td>
+            <td class="text-end fw-semibold
+              {% if (row.value or 0) > 0 %}amount-pos
+              {% elif (row.value or 0) < 0 %}amount-neg
+              {% else %}text-muted{% endif %}">
+              {{ "{:,.2f}".format(row.value or 0) }}
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8" class="text-center text-muted py-5">
+              <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+              لا توجد بيانات مخزون
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+      {% if inventory_data %}
+      <tfoot>
+        <tr class="table-light fw-bold">
+          <td colspan="7" class="text-end">إجمالي قيمة المخزون:</td>
+          <td class="text-end amount-pos">{{ "{:,.2f}".format(total_value | default(0)) }}</td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+</div>
+{% endblock %}

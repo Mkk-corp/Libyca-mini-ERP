@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}{% if emp %}تعديل موظف{% else %}موظف جديد{% endif %} - ليبيكا ERP{% endblock %}
+
+{% block breadcrumb %}
+<i class="bi bi-person-badge me-1"></i>
+<a href="/employees" class="text-decoration-none text-secondary">الموظفون</a>
+<i class="bi bi-chevron-left mx-1" style="font-size:.75rem"></i>
+{% if emp %}تعديل: {{ emp.name }}{% else %}موظف جديد{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-xl-8 col-lg-10">
+
+    <div class="card table-card">
+      <div class="card-header bg-white border-bottom py-3 d-flex align-items-center gap-2">
+        <div class="icon bg-primary bg-opacity-10 text-primary" style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center">
+          <i class="bi bi-person-badge"></i>
+        </div>
+        <h6 class="mb-0 fw-semibold">
+          {% if emp %}تعديل بيانات الموظف{% else %}إضافة موظف جديد{% endif %}
+        </h6>
+      </div>
+      <div class="card-body p-4">
+
+        <form method="post"
+              action="{% if emp %}/employees/{{ emp.id }}/edit{% else %}/employees/new{% endif %}">
+
+          <div class="row g-3">
+
+            <!-- Code -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">الكود</label>
+              <input type="text" name="code" class="form-control"
+                     placeholder="مثال: EMP001"
+                     value="{{ emp.code if emp else '' }}">
+            </div>
+
+            <!-- Name -->
+            <div class="col-sm-8">
+              <label class="form-label fw-semibold">الاسم الكامل <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control"
+                     placeholder="اسم الموظف"
+                     value="{{ emp.name if emp else '' }}" required>
+            </div>
+
+            <!-- Department -->
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">القسم</label>
+              <input type="text" name="department" class="form-control"
+                     placeholder="مثال: المستودع، الإدارة..."
+                     value="{{ emp.department if emp else '' }}">
+            </div>
+
+            <!-- Hire Date -->
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">تاريخ التعيين</label>
+              <input type="date" name="hire_date" class="form-control"
+                     value="{{ emp.hire_date if emp else '' }}">
+            </div>
+
+            <div class="col-12"><hr class="my-1"><p class="text-muted small mb-0">بيانات الراتب</p></div>
+
+            <!-- Basic Salary -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">الراتب الأساسي (د.ل)</label>
+              <div class="input-group">
+                <span class="input-group-text">د.ل</span>
+                <input type="number" name="basic_salary" class="form-control"
+                       step="0.01" min="0"
+                       value="{{ emp.basic_salary if emp else '' }}">
+              </div>
+            </div>
+
+            <!-- Shift Salary -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">راتب الوردية (د.ل)</label>
+              <div class="input-group">
+                <span class="input-group-text">د.ل</span>
+                <input type="number" name="shift_salary" class="form-control"
+                       step="0.01" min="0"
+                       value="{{ emp.shift_salary if emp else '' }}">
+              </div>
+            </div>
+
+            <!-- Fixed Deductions -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">الخصومات الثابتة (د.ل)</label>
+              <div class="input-group">
+                <span class="input-group-text">د.ل</span>
+                <input type="number" name="fixed_deductions" class="form-control"
+                       step="0.01" min="0"
+                       value="{{ emp.fixed_deductions if emp else '' }}">
+              </div>
+            </div>
+
+            <!-- Payment Method -->
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">طريقة الصرف</label>
+              <select name="payment_method" class="form-select">
+                <option value="كاش"  {% if emp and emp.payment_method == 'كاش'  %}selected{% endif %}>كاش</option>
+                <option value="مصرف" {% if emp and emp.payment_method == 'مصرف' %}selected{% endif %}>مصرف</option>
+              </select>
+            </div>
+
+            <!-- Active -->
+            <div class="col-sm-6 d-flex align-items-end pb-2">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="active" id="activeCheck" value="1"
+                       {% if not emp or emp.active %}checked{% endif %}>
+                <label class="form-check-label fw-semibold" for="activeCheck">موظف نشط</label>
+              </div>
+            </div>
+
+          </div><!-- /row -->
+
+          <hr class="my-4">
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="/employees" class="btn btn-outline-secondary px-4">
+              <i class="bi bi-x-lg me-1"></i> إلغاء
+            </a>
+            <button type="submit" class="btn btn-success px-5">
+              <i class="bi bi-check-lg me-1"></i>
+              {% if emp %}حفظ التعديلات{% else %}حفظ الموظف{% endif %}
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

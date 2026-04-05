@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}بورصة الأسعار - ليبيكا ERP{% endblock %}
+
+{% block breadcrumb %}
+<i class="bi bi-graph-up-arrow me-1"></i> بورصة الأسعار
+{% endblock %}
+
+{% block content %}
+
+<!-- Inline Add Form -->
+<div class="card table-card mb-4">
+  <div class="card-header bg-white border-bottom py-3">
+    <h6 class="mb-0 fw-semibold"><i class="bi bi-plus-circle me-2 text-success"></i>إضافة سعر جديد</h6>
+  </div>
+  <div class="card-body p-4">
+    <form method="post" action="/prices/new" autocomplete="off">
+      <div class="row g-3 align-items-end">
+
+        <!-- Date -->
+        <div class="col-sm-3">
+          <label class="form-label fw-semibold">التاريخ <span class="text-danger">*</span></label>
+          <input type="date" name="date_" class="form-control" required>
+        </div>
+
+        <!-- Item Name -->
+        <div class="col-sm-3">
+          <label class="form-label fw-semibold">الصنف <span class="text-danger">*</span></label>
+          <input type="text" name="item_name" id="item_name_inp" class="form-control" list="items-list"
+                 placeholder="اسم الصنف" required>
+          <datalist id="items-list">
+            {% for it in items %}
+              <option value="{{ it.name }}" data-code="{{ it.code }}">
+            {% endfor %}
+          </datalist>
+        </div>
+
+        <!-- Item Code -->
+        <div class="col-sm-2">
+          <label class="form-label fw-semibold">الكود</label>
+          <input type="text" name="item_code" id="item_code_inp" class="form-control" placeholder="كود">
+        </div>
+
+        <!-- Buy Price -->
+        <div class="col-sm-2">
+          <label class="form-label fw-semibold">سعر الشراء <span class="text-danger">*</span></label>
+          <div class="input-group">
+            <input type="number" name="buy_price" class="form-control" step="0.01" min="0" placeholder="0.00" required>
+            <span class="input-group-text text-muted small">د.ل</span>
+          </div>
+        </div>
+
+        <!-- Sell Price -->
+        <div class="col-sm-2">
+          <label class="form-label fw-semibold">سعر البيع <span class="text-danger">*</span></label>
+          <div class="input-group">
+            <input type="number" name="sell_price" class="form-control" step="0.01" min="0" placeholder="0.00" required>
+            <span class="input-group-text text-muted small">د.ل</span>
+          </div>
+        </div>
+
+        <div class="col-12 d-flex justify-content-end">
+          <button type="submit" class="btn btn-success px-5">
+            <i class="bi bi-plus-lg me-1"></i> إضافة
+          </button>
+        </div>
+
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Prices Table -->
+<div class="table-card">
+  <div class="card-header bg-white border-bottom py-3">
+    <h6 class="mb-0 fw-semibold"><i class="bi bi-table me-2 text-primary"></i>سجل الأسعار</h6>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th>التاريخ</th>
+          <th>الكود</th>
+          <th>الصنف</th>
+          <th class="text-end">سعر الشراء (د.ل)</th>
+          <th class="text-end">سعر البيع (د.ل)</th>
+          <th class="text-end">هامش الربح</th>
+          <th class="text-center">إجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if prices %}
+          {% for p in prices %}
+          {% set margin = (p.sell_price or 0) - (p.buy_price or 0) %}
+          <tr>
+            <td class="text-muted" style="font-size:.88rem">{{ p.date_ }}</td>
+            <td><code class="text-primary">{{ p.item_code or '—' }}</code></td>
+            <td class="fw-semibold">{{ p.item_name }}</td>
+            <td class="text-end">{{ "{:,.2f}".format(p.buy_price or 0) }}</td>
+            <td class="text-end amount-pos">{{ "{:,.2f}".format(p.sell_price or 0) }}</td>
+            <td class="text-end {% if margin >= 0 %}amount-pos{% else %}amount-neg{% endif %}">
+              {{ "{:,.2f}".format(margin) }}
+            </td>
+            <td class="text-center">
+              <div class="d-flex gap-1 justify-content-center">
+                <a href="/prices/{{ p.id }}/edit" class="btn btn-sm btn-outline-primary" title="تعديل">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <form method="post" action="/prices/{{ p.id }}/delete" class="delete-form d-inline">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted py-5">
+              <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+              لا توجد أسعار مسجلة
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('item_name_inp').addEventListener('input', function () {
+    const val = this.value;
+    const opt = document.querySelector('#items-list option[value="' + val + '"]');
+    if (opt) {
+      document.getElementById('item_code_inp').value = opt.dataset.code || '';
+    }
+  });
+</script>
+{% endblock %}

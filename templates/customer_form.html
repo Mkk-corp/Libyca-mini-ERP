@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}{% if customer %}تعديل عميل{% else %}عميل جديد{% endif %} - ليبيكا ERP{% endblock %}
+
+{% block breadcrumb %}
+<i class="bi bi-people me-1"></i>
+<a href="/customers" class="text-decoration-none text-secondary">العملاء</a>
+<i class="bi bi-chevron-left mx-1" style="font-size:.75rem"></i>
+{% if customer %}تعديل: {{ customer.name }}{% else %}عميل جديد{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-xl-7 col-lg-9">
+
+    <div class="card table-card">
+      <div class="card-header bg-white border-bottom py-3 d-flex align-items-center gap-2">
+        <div class="icon bg-info bg-opacity-10 text-info" style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center">
+          <i class="bi bi-people"></i>
+        </div>
+        <h6 class="mb-0 fw-semibold">
+          {% if customer %}تعديل بيانات العميل{% else %}إضافة عميل جديد{% endif %}
+        </h6>
+      </div>
+      <div class="card-body p-4">
+
+        <form method="post"
+              action="{% if customer %}/customers/{{ customer.id }}/edit{% else %}/customers/new{% endif %}">
+
+          <div class="row g-3">
+
+            <!-- Code -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">الكود</label>
+              <input type="text" name="code" class="form-control"
+                     placeholder="مثال: CUS001"
+                     value="{{ customer.code if customer else '' }}">
+            </div>
+
+            <!-- Name -->
+            <div class="col-sm-8">
+              <label class="form-label fw-semibold">الاسم <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control"
+                     placeholder="اسم العميل الكامل"
+                     value="{{ customer.name if customer else '' }}" required>
+            </div>
+
+            <!-- Phone -->
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">الهاتف</label>
+              <input type="text" name="phone" class="form-control" dir="ltr"
+                     placeholder="09xxxxxxxx"
+                     value="{{ customer.phone if customer else '' }}">
+            </div>
+
+            <!-- City -->
+            <div class="col-sm-6">
+              <label class="form-label fw-semibold">المدينة</label>
+              <input type="text" name="city" class="form-control"
+                     placeholder="مثال: طرابلس"
+                     value="{{ customer.city if customer else '' }}">
+            </div>
+
+            <!-- Notes -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">ملاحظات</label>
+              <textarea name="notes" class="form-control" rows="3"
+                        placeholder="أي ملاحظات إضافية...">{{ customer.notes if customer else '' }}</textarea>
+            </div>
+
+            <!-- Active -->
+            <div class="col-12">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="active" id="activeCheck" value="1"
+                       {% if not customer or customer.active %}checked{% endif %}>
+                <label class="form-check-label fw-semibold" for="activeCheck">عميل نشط</label>
+              </div>
+            </div>
+
+          </div><!-- /row -->
+
+          <hr class="my-4">
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="/customers" class="btn btn-outline-secondary px-4">
+              <i class="bi bi-x-lg me-1"></i> إلغاء
+            </a>
+            <button type="submit" class="btn btn-success px-5">
+              <i class="bi bi-check-lg me-1"></i>
+              {% if customer %}حفظ التعديلات{% else %}حفظ العميل{% endif %}
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}{% if item %}تعديل صنف{% else %}صنف جديد{% endif %} - ليبيكا ERP{% endblock %}
+
+{% block breadcrumb %}
+<i class="bi bi-tags me-1"></i>
+<a href="/items" class="text-decoration-none text-secondary">الأصناف</a>
+<i class="bi bi-chevron-left mx-1" style="font-size:.75rem"></i>
+{% if item %}تعديل: {{ item.name }}{% else %}صنف جديد{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-xl-6 col-lg-8">
+
+    <div class="card table-card">
+      <div class="card-header bg-white border-bottom py-3 d-flex align-items-center gap-2">
+        <div class="icon bg-warning bg-opacity-10 text-warning" style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center">
+          <i class="bi bi-tags"></i>
+        </div>
+        <h6 class="mb-0 fw-semibold">
+          {% if item %}تعديل بيانات الصنف{% else %}إضافة صنف جديد{% endif %}
+        </h6>
+      </div>
+      <div class="card-body p-4">
+
+        <form method="post"
+              action="{% if item %}/items/{{ item.id }}/edit{% else %}/items/new{% endif %}">
+
+          <div class="row g-3">
+
+            <!-- Code -->
+            <div class="col-sm-4">
+              <label class="form-label fw-semibold">الكود</label>
+              <input type="text" name="code" class="form-control"
+                     placeholder="مثال: ITM001"
+                     value="{{ item.code if item else '' }}">
+            </div>
+
+            <!-- Name -->
+            <div class="col-sm-8">
+              <label class="form-label fw-semibold">اسم الصنف <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control"
+                     placeholder="اسم الصنف"
+                     value="{{ item.name if item else '' }}" required>
+            </div>
+
+            <!-- Category -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">الفئة</label>
+              <input type="text" name="category" class="form-control"
+                     placeholder="مثال: فاكهة، خضروات، بقوليات..."
+                     value="{{ item.category if item else '' }}">
+            </div>
+
+            <!-- Notes -->
+            <div class="col-12">
+              <label class="form-label fw-semibold">ملاحظات</label>
+              <textarea name="notes" class="form-control" rows="3"
+                        placeholder="أي ملاحظات إضافية...">{{ item.notes if item else '' }}</textarea>
+            </div>
+
+            <!-- Active -->
+            <div class="col-12">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="active" id="activeCheck" value="1"
+                       {% if not item or item.active %}checked{% endif %}>
+                <label class="form-check-label fw-semibold" for="activeCheck">صنف نشط</label>
+              </div>
+            </div>
+
+          </div><!-- /row -->
+
+          <hr class="my-4">
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="/items" class="btn btn-outline-secondary px-4">
+              <i class="bi bi-x-lg me-1"></i> إلغاء
+            </a>
+            <button type="submit" class="btn btn-success px-5">
+              <i class="bi bi-check-lg me-1"></i>
+              {% if item %}حفظ التعديلات{% else %}حفظ الصنف{% endif %}
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

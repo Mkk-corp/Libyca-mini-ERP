@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block title %}الرواتب - ليبيكا ERP{% endblock %}
+
+{% block breadcrumb %}
+<i class="bi bi-credit-card me-1"></i> الرواتب
+{% endblock %}
+
+{% block content %}
+
+<!-- KPI Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card stat-card h-100">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="icon bg-primary bg-opacity-10 text-primary">
+          <i class="bi bi-credit-card"></i>
+        </div>
+        <div>
+          <div class="text-muted" style="font-size:.8rem">عدد سجلات الرواتب</div>
+          <div class="fw-bold fs-5">{{ total | default(0) }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card stat-card h-100">
+      <div class="card-body d-flex align-items-center gap-3">
+        <div class="icon bg-danger bg-opacity-10 text-danger">
+          <i class="bi bi-cash-coin"></i>
+        </div>
+        <div>
+          <div class="text-muted" style="font-size:.8rem">إجمالي صافي الرواتب (د.ل)</div>
+          <div class="fw-bold fs-5 amount-neg">{{ "{:,.2f}".format(total_net | default(0)) }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Inline Add Form -->
+<div class="card table-card mb-4">
+  <div class="card-header bg-white border-bottom py-3">
+    <h6 class="mb-0 fw-semibold"><i class="bi bi-plus-circle me-2 text-success"></i>إضافة راتب جديد</h6>
+  </div>
+  <div class="card-body p-4">
+    <form method="post" action="/payroll/new">
+      <div class="row g-3">
+
+        <!-- Employee -->
+        <div class="col-sm-4">
+          <label class="form-label fw-semibold">الموظف <span class="text-danger">*</span></label>
+          <select name="employee_id" class="form-select" required>
+            <option value="">-- اختر الموظف --</option>
+            {% for e in employees %}
+              <option value="{{ e.id }}">{{ e.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Month -->
+        <div class="col-sm-3">
+          <label class="form-label fw-semibold">الشهر <span class="text-danger">*</span></label>
+          <input type="month" name="month" class="form-control" value="{{ month or '' }}" required>
+        </div>
+
+        <!-- Pay Date -->
+        <div class="col-sm-3">
+          <label class="form-label fw-semibold">تاريخ الصرف</label>
+          <input type="date" name="pay_date" class="form-control">
+        </div>
+
+        <!-- Basic Salary -->
+        <div class="col-sm-3">
+          <label class="form-label fw-semibold">الراتب الأساسي</label>
+          <input type="number" name="basic_salary" class="form-control" step="0.01" min="0" placeholder="0.00">
+        </div>
+
+        <!-- Allowances -->
+        <div class="col-sm-3">
+          <label class="form-label fw-semibold">البدلات</label>
+          <input type="number" name="allowances" id="allowances" class="form-control" step="0.01" min="0" placeholder="0.00" oninput="calcNet()">
+        </div>
+
+        <!-- Overtime -->
+        <div class="col-sm-3">
+          <label class="form-label fw-semibold">الإضافي</label>
+          <input type="number" name="overtime" id="overtime" class="form-control" step="0.01" min="0" placeholder="0.00" oninput="calcNet()">
+        </div>
+
+        <!-- Deductions -->
+        <div class="col-sm-3">
+          <label class="form-label fw-semibold">الخصومات</label>
+          <input type="number" name="deductions" id="deductions" class="form-control" step="0.01" min="0" placeholder="0.00" oninput="calcNet()">
+        </div>
+
+        <!-- Net Salary -->
+        <div class="col-sm-4">
+          <label class="form-label fw-semibold">صافي الراتب (د.ل)</label>
+          <div class="input-group">
+            <span class="input-group-text">د.ل</span>
+            <input type="number" name="net_salary" id="net_salary" class="form-control bg-light fw-bold" step="0.01" min="0" placeholder="0.00">
+            <span class="input-group-text text-muted"><i class="bi bi-calculator"></i></span>
+          </div>
+        </div>
+
+        <!-- Payment Method -->
+        <div class="col-sm-4">
+          <label class="form-label fw-semibold">طريقة الصرف</label>
+          <select name="payment_method" class="form-select">
+            <option value="كاش">كاش</option>
+            <option value="مصرف">مصرف</option>
+          </select>
+        </div>
+
+        <div class="col-12 d-flex justify-content-end">
+          <button type="submit" class="btn btn-success px-5">
+            <i class="bi bi-plus-lg me-1"></i> إضافة
+          </button>
+        </div>
+
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Filter by Month -->
+<div class="card table-card mb-4">
+  <div class="card-body py-3">
+    <form method="get" action="/payroll" class="row g-2 align-items-end">
+      <div class="col-sm-4">
+        <label class="form-label small text-muted mb-1">تصفية بالشهر</label>
+        <input type="month" name="month" class="form-control" value="{{ month or '' }}">
+      </div>
+      <div class="col-sm-2">
+        <button type="submit" class="btn btn-primary w-100">
+          <i class="bi bi-funnel me-1"></i> تصفية
+        </button>
+      </div>
+      <div class="col-sm-2">
+        <a href="/payroll" class="btn btn-outline-secondary w-100">
+          <i class="bi bi-x-lg me-1"></i> مسح
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Table -->
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead>
+        <tr>
+          <th>الرقم</th>
+          <th>الشهر</th>
+          <th>تاريخ الصرف</th>
+          <th>الموظف</th>
+          <th class="text-end">الراتب الأساسي</th>
+          <th class="text-end">بدلات</th>
+          <th class="text-end">إضافي</th>
+          <th class="text-end">خصومات</th>
+          <th class="text-end">صافي الراتب</th>
+          <th>طريقة الدفع</th>
+          <th class="text-center">إجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if payrolls %}
+          {% for pr in payrolls %}
+          <tr>
+            <td><span class="badge bg-primary bg-opacity-10 text-primary fw-semibold">{{ pr.id }}</span></td>
+            <td class="text-muted">{{ pr.month }}</td>
+            <td class="text-muted" style="font-size:.88rem">{{ pr.pay_date or '—' }}</td>
+            <td class="fw-semibold">{{ pr.employee_name or '—' }}</td>
+            <td class="text-end">{{ "{:,.2f}".format(pr.basic_salary or 0) }}</td>
+            <td class="text-end amount-pos">{{ "{:,.2f}".format(pr.allowances or 0) }}</td>
+            <td class="text-end amount-pos">{{ "{:,.2f}".format(pr.overtime or 0) }}</td>
+            <td class="text-end amount-neg">{{ "{:,.2f}".format(pr.deductions or 0) }}</td>
+            <td class="text-end fw-bold">{{ "{:,.2f}".format(pr.net_salary or 0) }}</td>
+            <td>
+              <span class="badge
+                {% if pr.payment_method == 'كاش' %}bg-success
+                {% else %}bg-primary{% endif %}
+                bg-opacity-75">
+                {{ pr.payment_method or '—' }}
+              </span>
+            </td>
+            <td class="text-center">
+              <div class="d-flex gap-1 justify-content-center">
+                <a href="/payroll/{{ pr.id }}/edit" class="btn btn-sm btn-outline-primary" title="تعديل">
+                  <i class="bi bi-pencil"></i>
+                </a>
+                <form method="post" action="/payroll/{{ pr.id }}/delete" class="delete-form d-inline">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" title="حذف">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="11" class="text-center text-muted py-5">
+              <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+              لا توجد سجلات رواتب
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+      {% if payrolls %}
+      <tfoot>
+        <tr class="table-light fw-bold">
+          <td colspan="8" class="text-end">إجمالي صافي الرواتب:</td>
+          <td class="text-end amount-neg">{{ "{:,.2f}".format(total_net | default(0)) }}</td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+      {% endif %}
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if pages and pages > 1 %}
+  <div class="card-footer bg-white border-top py-3">
+    <div class="d-flex align-items-center justify-content-between">
+      <div class="text-muted" style="font-size:.85rem">
+        صفحة {{ page }} من {{ pages }} — إجمالي {{ total }} سجل
+      </div>
+      <nav>
+        <ul class="pagination pagination-sm mb-0 gap-1">
+          <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+            <a class="page-link" href="?page={{ page - 1 }}{% if month %}&month={{ month }}{% endif %}">
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          </li>
+          {% for p_num in range(1, pages + 1) %}
+            {% if p_num == page %}
+              <li class="page-item active"><span class="page-link">{{ p_num }}</span></li>
+            {% elif p_num == 1 or p_num == pages or (p_num >= page - 2 and p_num <= page + 2) %}
+              <li class="page-item">
+                <a class="page-link" href="?page={{ p_num }}{% if month %}&month={{ month }}{% endif %}">{{ p_num }}</a>
+              </li>
+            {% elif p_num == page - 3 or p_num == page + 3 %}
+              <li class="page-item disabled"><span class="page-link">…</span></li>
+            {% endif %}
+          {% endfor %}
+          <li class="page-item {% if page >= pages %}disabled{% endif %}">
+            <a class="page-link" href="?page={{ page + 1 }}{% if month %}&month={{ month }}{% endif %}">
+              <i class="bi bi-chevron-left"></i>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function calcNet() {
+    const basic    = parseFloat(document.querySelector('[name="basic_salary"]').value) || 0;
+    const allow    = parseFloat(document.getElementById('allowances').value) || 0;
+    const overtime = parseFloat(document.getElementById('overtime').value)   || 0;
+    const deduct   = parseFloat(document.getElementById('deductions').value) || 0;
+    document.getElementById('net_salary').value = (basic + allow + overtime - deduct).toFixed(2);
+  }
+</script>
+{% endblock %}
