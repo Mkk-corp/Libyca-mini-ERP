@@ -22,6 +22,7 @@
     display: flex; align-items: center; justify-content: center;
     font-size: .75rem;
   }
+  .role-badge.superadmin { background: #fce7f3; color: #9d174d; }
   .role-badge.admin  { background: #fef3c7; color: #d97706; }
   .role-badge.user   { background: #dbeafe; color: #2563eb; }
 
@@ -83,7 +84,9 @@
         <div class="avatar-ring">
           {{ user.name[0] | upper }}
           <div class="role-badge {{ user.role }}">
-            {% if user.role == 'admin' %}
+            {% if user.role == 'superadmin' %}
+              <i class="bi bi-shield-fill-exclamation"></i>
+            {% elif user.role == 'admin' %}
               <i class="bi bi-shield-fill-check"></i>
             {% else %}
               <i class="bi bi-person-fill"></i>
@@ -95,8 +98,11 @@
         <div class="flex-grow-1">
           <h4 class="fw-bold mb-1" style="color:#1a5276">{{ user.name }}</h4>
           <div class="d-flex align-items-center gap-2 flex-wrap">
-            <span class="badge {% if user.role == 'admin' %}bg-warning text-dark{% else %}bg-primary bg-opacity-10 text-primary{% endif %} px-3 py-2" style="font-size:.8rem;border-radius:20px">
-              {% if user.role == 'admin' %}
+            <span class="badge {% if user.role == 'superadmin' %}text-white{% elif user.role == 'admin' %}bg-warning text-dark{% else %}bg-primary bg-opacity-10 text-primary{% endif %} px-3 py-2"
+                  style="font-size:.8rem;border-radius:20px;{% if user.role == 'superadmin' %}background:#9d174d{% endif %}">
+              {% if user.role == 'superadmin' %}
+                <i class="bi bi-shield-fill-exclamation me-1"></i> مشرف عام
+              {% elif user.role == 'admin' %}
                 <i class="bi bi-shield-fill-check me-1"></i> مشرف
               {% else %}
                 <i class="bi bi-person-fill me-1"></i> مستخدم

@@ -280,6 +280,132 @@ async def profile_password(
     return RedirectResponse("/profile?cs=1", status_code=303)
 
 
+# ═══════════════════════════════════════════
+#  USERS  (admin only)
+# ═══════════════════════════════════════════
+
+def _require_admin(request: Request):
+    if request.session.get("user_role") not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="غير مصرح")
+
+def _require_superadmin(request: Request):
+    if request.session.get("user_role") != "superadmin":
+        raise HTTPException(status_code=403, detail="هذه العملية تتطلب صلاحية المشرف العام")
+
+
+@app.get("/users", response_class=HTMLResponse, include_in_schema=False)
+async def users_page(request: Request, db: Session = Depends(get_db)):
+    _require_admin(request)
+    users = db.query(User).order_by(User.created_at.desc()).all()
+    return templates.TemplateResponse(request, "users.html", {
+        "users": users,
+        "current_user_id": request.session.get("user_id"),
+        "current_user_role": request.session.get("user_role"),
+        "success": request.query_params.get("ok"),
+        "error": request.query_params.get("err"),
+    })
+
+
+@app.post("/users/create", include_in_schema=False)
+async def users_create(
+    request: Request,
+    db: Session = Depends(get_db),
+    name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    role: str = Form("user"),
+):
+    from routers.security import hash_password
+    _require_admin(request)
+    email = email.strip().lower()
+    if db.query(User).filter(User.email == email).first():
+        return RedirectResponse("/users?err=البريد+الإلكتروني+مسجل+مسبقاً", status_code=303)
+    # Only superadmin can create superadmin accounts
+    if role == "superadmin" and request.session.get("user_role") != "superadmin":
+        role = "admin"
+    if role not in ("admin", "user", "superadmin"):
+        role = "user"
+    user = User(
+        name=name.strip(), email=email,
+        password_hash=hash_password(password),
+        role=role, created_at=datetime.utcnow(),
+    )
+    db.add(user); db.commit()
+    return RedirectResponse("/users?ok=تم+إنشاء+الحساب+بنجاح", status_code=303)
+
+
+@app.post("/users/{uid}/role", include_in_schema=False)
+async def users_set_role(
+    request: Request, uid: int,
+    db: Session = Depends(get_db),
+    role: str = Form(...),
+):
+    _require_admin(request)
+    current_role = request.session.get("user_role")
+    user = db.query(User).filter(User.id == uid).first()
+    if not user:
+        return RedirectResponse("/users", status_code=303)
+    # Only superadmin can touch superadmin accounts or assign superadmin role
+    if user.role == "superadmin" or role == "superadmin":
+        _require_superadmin(request)
+    allowed_roles = ("admin", "user", "superadmin") if current_role == "superadmin" else ("admin", "user")
+    if role in allowed_roles:
+        user.role = role
+        db.commit()
+    return RedirectResponse("/users", status_code=303)
+
+
+@app.post("/users/{uid}/toggle", include_in_schema=False)
+async def users_toggle(
+    request: Request, uid: int,
+    db: Session = Depends(get_db),
+):
+    _require_admin(request)
+    user = db.query(User).filter(User.id == uid).first()
+    if user:
+        # Only superadmin can toggle superadmin accounts
+        if user.role == "superadmin":
+            _require_superadmin(request)
+        user.is_active = not user.is_active
+        db.commit()
+    return RedirectResponse("/users", status_code=303)
+
+
+@app.post("/users/{uid}/reset-password", include_in_schema=False)
+async def users_reset_password(
+    request: Request, uid: int,
+    db: Session = Depends(get_db),
+    new_password: str = Form(...),
+):
+    from routers.security import hash_password
+    _require_admin(request)
+    user = db.query(User).filter(User.id == uid).first()
+    if user:
+        if user.role == "superadmin":
+            _require_superadmin(request)
+        if len(new_password) >= 6:
+            user.password_hash = hash_password(new_password)
+            db.commit()
+    return RedirectResponse("/users?ok=تم+تعيين+كلمة+المرور+بنجاح", status_code=303)
+
+
+@app.post("/users/{uid}/delete", include_in_schema=False)
+async def users_delete(
+    request: Request, uid: int,
+    db: Session = Depends(get_db),
+):
+    _require_admin(request)
+    if uid == request.session.get("user_id"):
+        return RedirectResponse("/users?err=لا+يمكنك+حذف+حسابك+الخاص", status_code=303)
+    user = db.query(User).filter(User.id == uid).first()
+    if user:
+        # Only superadmin can delete superadmin accounts
+        if user.role == "superadmin":
+            _require_superadmin(request)
+        db.delete(user); db.commit()
+    return RedirectResponse("/users?ok=تم+حذف+المستخدم", status_code=303)
+
+
 CATS = {1:'نقل',2:'ديزل/وقود',3:'عمالة',4:'صيانة',5:'كهرباء',
         6:'مياه',7:'إيجار',8:'اتصالات',9:'مصاريف إدارية',10:'أخرى',
         11:'مقدم بضاعة',12:'شوالات',13:'مطبخ'}

@@ -208,6 +208,11 @@
   <a href="/settings" class="nav-link {% if '/settings' in request.url.path %}active{% endif %}">
     <i class="bi bi-gear"></i> الإعدادات
   </a>
+  {% if request.session.get('user_role') in ('admin', 'superadmin') %}
+  <a href="/users" class="nav-link {% if '/users' in request.url.path %}active{% endif %}">
+    <i class="bi bi-people-fill"></i> المستخدمون
+  </a>
+  {% endif %}
   <a href="/profile" class="nav-link {% if '/profile' in request.url.path %}active{% endif %}">
     <i class="bi bi-person-circle"></i> الملف الشخصي
   </a>
@@ -231,7 +236,7 @@
         </div>
         <div style="line-height:1.2">
           <div style="font-size:.82rem;font-weight:600;color:#1e293b">{{ request.session.get('user_name') }}</div>
-          <div style="font-size:.72rem;color:#94a3b8">{% if request.session.get('user_role') == 'admin' %}مشرف{% else %}مستخدم{% endif %}</div>
+          <div style="font-size:.72rem;color:#94a3b8">{% if request.session.get('user_role') == 'superadmin' %}مشرف عام{% elif request.session.get('user_role') == 'admin' %}مشرف{% else %}مستخدم{% endif %}</div>
         </div>
         <a href="/logout" title="تسجيل الخروج"
            style="margin-right:4px;color:#94a3b8;font-size:1.05rem;transition:color .15s;"
