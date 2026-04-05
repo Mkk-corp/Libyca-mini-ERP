@@ -8,10 +8,10 @@
   .avatar-ring {
     width: 96px; height: 96px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #1a5276, #2980b9);
+    background: linear-gradient(135deg, #0C3D38, #1A6B5C);
     display: flex; align-items: center; justify-content: center;
     font-size: 2.4rem; font-weight: 700; color: #fff;
-    box-shadow: 0 4px 20px rgba(26,82,118,.35);
+    box-shadow: 0 4px 20px rgba(12,61,56,.35);
     flex-shrink: 0;
     position: relative;
   }
@@ -96,7 +96,7 @@
 
         <!-- Name & meta -->
         <div class="flex-grow-1">
-          <h4 class="fw-bold mb-1" style="color:#1a5276">{{ user.name }}</h4>
+          <h4 class="fw-bold mb-1" style="color:#0C3D38">{{ user.name }}</h4>
           <div class="d-flex align-items-center gap-2 flex-wrap">
             <span class="badge {% if user.role == 'superadmin' %}text-white{% elif user.role == 'admin' %}bg-warning text-dark{% else %}bg-primary bg-opacity-10 text-primary{% endif %} px-3 py-2"
                   style="font-size:.8rem;border-radius:20px;{% if user.role == 'superadmin' %}background:#9d174d{% endif %}">
