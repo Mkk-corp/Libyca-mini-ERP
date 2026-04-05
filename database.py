@@ -276,5 +276,26 @@ class Todo(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+# ── المستخدمون ──────────────────────────────────────────────
+class User(Base):
+    __tablename__ = "users"
+    id           = Column(Integer, primary_key=True, autoincrement=True)
+    name         = Column(String, nullable=False)
+    email        = Column(String, unique=True, nullable=False, index=True)
+    password_hash = Column(String, nullable=False)
+    role         = Column(String, default="user")   # "admin" | "user"
+    is_active    = Column(Boolean, default=True)
+    created_at   = Column(DateTime, default=datetime.utcnow)
+
+
+# ── القائمة السوداء للتوكنات (لـ logout) ────────────────────
+class TokenBlacklist(Base):
+    __tablename__ = "token_blacklist"
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    jti        = Column(String, unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 def create_tables():
     Base.metadata.create_all(bind=engine)

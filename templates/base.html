@@ -208,6 +208,9 @@
   <a href="/settings" class="nav-link {% if '/settings' in request.url.path %}active{% endif %}">
     <i class="bi bi-gear"></i> الإعدادات
   </a>
+  <a href="/profile" class="nav-link {% if '/profile' in request.url.path %}active{% endif %}">
+    <i class="bi bi-person-circle"></i> الملف الشخصي
+  </a>
 </div>
 
 <!-- Main -->
@@ -216,9 +219,27 @@
     <div class="fw-semibold text-secondary" style="font-size:.95rem">
       {% block breadcrumb %}{% endblock %}
     </div>
-    <div class="text-muted" style="font-size:.85rem">
-      <i class="bi bi-calendar3 me-1"></i>
-      <span id="clock"></span>
+    <div class="d-flex align-items-center gap-3">
+      <div class="text-muted" style="font-size:.85rem">
+        <i class="bi bi-calendar3 me-1"></i>
+        <span id="clock"></span>
+      </div>
+      {% if request.session.get('user_name') %}
+      <div class="d-flex align-items-center gap-2" style="border-right:1px solid #e2e8f0;padding-right:16px">
+        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#1a5276,#2980b9);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.85rem;font-weight:700;flex-shrink:0">
+          {{ request.session.get('user_name', '؟')[0] }}
+        </div>
+        <div style="line-height:1.2">
+          <div style="font-size:.82rem;font-weight:600;color:#1e293b">{{ request.session.get('user_name') }}</div>
+          <div style="font-size:.72rem;color:#94a3b8">{% if request.session.get('user_role') == 'admin' %}مشرف{% else %}مستخدم{% endif %}</div>
+        </div>
+        <a href="/logout" title="تسجيل الخروج"
+           style="margin-right:4px;color:#94a3b8;font-size:1.05rem;transition:color .15s;"
+           onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#94a3b8'">
+          <i class="bi bi-box-arrow-right"></i>
+        </a>
+      </div>
+      {% endif %}
     </div>
   </div>
 
