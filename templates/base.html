@@ -22,10 +22,23 @@
   <style>
     :root {
       --sidebar-w: 240px;
-      --primary: #1a5276;
-      --accent: #2980b9;
+      --primary: #0C3D38;
+      --accent:  #1A6B5C;
+      --lime:    #C8DC28;
     }
     body { font-family: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif; background: #f4f6f9; }
+
+    /* ── Bootstrap primary overrides ── */
+    .btn-primary                   { background-color: var(--primary) !important; border-color: var(--primary) !important; }
+    .btn-primary:hover,
+    .btn-primary:focus              { background-color: #0a3330 !important; border-color: #0a3330 !important; }
+    .btn-outline-primary            { color: var(--primary) !important; border-color: var(--primary) !important; }
+    .btn-outline-primary:hover      { background-color: var(--primary) !important; color: #fff !important; }
+    .text-primary                   { color: var(--primary) !important; }
+    .bg-primary                     { background-color: var(--primary) !important; }
+    .border-primary                 { border-color: var(--primary) !important; }
+    .bg-primary.bg-opacity-10       { background-color: rgba(12,61,56,.1) !important; }
+    a:not(.btn):not(.nav-link)      { color: var(--accent); }
 
     /* ── Sidebar ── */
     #sidebar {
@@ -49,25 +62,29 @@
       color: #fff;
       font-size: 1.3rem;
       font-weight: 700;
-      border-bottom: 1px solid rgba(255,255,255,.15);
+      border-bottom: 1px solid rgba(255,255,255,.12);
     }
+    #sidebar .brand .brand-sub { font-size:.7rem; color: var(--lime); font-weight:400; opacity:.85; }
     #sidebar .nav-link {
-      color: rgba(255,255,255,.8);
+      color: rgba(255,255,255,.75);
       padding: 10px 16px;
       display: flex;
       align-items: center;
       gap: 10px;
       border-radius: 0;
       font-size: .92rem;
-      transition: background .15s;
+      transition: background .15s, color .15s;
     }
     #sidebar .nav-link:hover, #sidebar .nav-link.active {
-      background: rgba(255,255,255,.15);
-      color: #fff;
+      background: rgba(200,220,40,.12);
+      color: var(--lime);
+    }
+    #sidebar .nav-link.active {
+      border-right: 3px solid var(--lime);
     }
     #sidebar .nav-section {
       font-size: .72rem;
-      color: rgba(255,255,255,.45);
+      color: rgba(255,255,255,.38);
       padding: 12px 16px 4px;
       text-transform: uppercase;
       letter-spacing: .08em;
@@ -140,7 +157,7 @@
 <div id="sidebar">
   <div class="brand">
     <i class="bi bi-recycle me-1"></i> ليبيكا
-    <div style="font-size:.7rem;color:rgba(255,255,255,.5);font-weight:400">نظام إدارة متكامل</div>
+    <div class="brand-sub">نظام إدارة متكامل</div>
   </div>
 
   <div class="nav-section">الرئيسية</div>
@@ -208,6 +225,14 @@
   <a href="/settings" class="nav-link {% if '/settings' in request.url.path %}active{% endif %}">
     <i class="bi bi-gear"></i> الإعدادات
   </a>
+  {% if request.session.get('user_role') in ('admin', 'superadmin') %}
+  <a href="/users" class="nav-link {% if '/users' in request.url.path %}active{% endif %}">
+    <i class="bi bi-people-fill"></i> المستخدمون
+  </a>
+  {% endif %}
+  <a href="/profile" class="nav-link {% if '/profile' in request.url.path %}active{% endif %}">
+    <i class="bi bi-person-circle"></i> الملف الشخصي
+  </a>
 </div>
 
 <!-- Main -->
@@ -216,9 +241,27 @@
     <div class="fw-semibold text-secondary" style="font-size:.95rem">
       {% block breadcrumb %}{% endblock %}
     </div>
-    <div class="text-muted" style="font-size:.85rem">
-      <i class="bi bi-calendar3 me-1"></i>
-      <span id="clock"></span>
+    <div class="d-flex align-items-center gap-3">
+      <div class="text-muted" style="font-size:.85rem">
+        <i class="bi bi-calendar3 me-1"></i>
+        <span id="clock"></span>
+      </div>
+      {% if request.session.get('user_name') %}
+      <div class="d-flex align-items-center gap-2" style="border-right:1px solid #e2e8f0;padding-right:16px">
+        <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#0C3D38,#1A6B5C);display:flex;align-items:center;justify-content:center;color:#fff;font-size:.85rem;font-weight:700;flex-shrink:0">
+          {{ request.session.get('user_name', '؟')[0] }}
+        </div>
+        <div style="line-height:1.2">
+          <div style="font-size:.82rem;font-weight:600;color:#1e293b">{{ request.session.get('user_name') }}</div>
+          <div style="font-size:.72rem;color:#94a3b8">{% if request.session.get('user_role') == 'superadmin' %}مشرف عام{% elif request.session.get('user_role') == 'admin' %}مشرف{% else %}مستخدم{% endif %}</div>
+        </div>
+        <a href="/logout" title="تسجيل الخروج"
+           style="margin-right:4px;color:#94a3b8;font-size:1.05rem;transition:color .15s;"
+           onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#94a3b8'">
+          <i class="bi bi-box-arrow-right"></i>
+        </a>
+      </div>
+      {% endif %}
     </div>
   </div>
 

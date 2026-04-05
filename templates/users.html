@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+{% block title %}المستخدمون — ليبيكا ERP{% endblock %}
+{% block breadcrumb %}<i class="bi bi-people-fill me-1"></i> إدارة المستخدمين{% endblock %}
+
+{% block head %}
+<style>
+  .role-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px; border-radius: 20px;
+    font-size: .78rem; font-weight: 600;
+  }
+  .role-pill.superadmin { background: #fce7f3; color: #9d174d; }
+  .role-pill.admin { background: #fef3c7; color: #d97706; }
+  .role-pill.user  { background: #dbeafe; color: #2563eb; }
+
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+  }
+  .status-dot.active   { background: #16a34a; }
+  .status-dot.inactive { background: #dc2626; }
+
+  .avatar-sm {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: linear-gradient(135deg, #0C3D38, #1A6B5C);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #fff; font-size: .8rem; font-weight: 700; flex-shrink: 0;
+  }
+  .avatar-sm.inactive { background: linear-gradient(135deg, #94a3b8, #cbd5e1); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <div class="col-12">
+
+    <!-- Header row -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-3">
+      <div>
+        <h5 class="fw-bold mb-0" style="color:#0C3D38">المستخدمون</h5>
+        <div class="text-muted" style="font-size:.82rem">{{ users | length }} مستخدم مسجّل</div>
+      </div>
+      <button class="btn btn-primary btn-sm px-4" style="border-radius:8px"
+              data-bs-toggle="modal" data-bs-target="#addUserModal">
+        <i class="bi bi-person-plus-fill me-1"></i> مستخدم جديد
+      </button>
+    </div>
+
+    <!-- Flash messages -->
+    {% if success %}
+    <div class="alert alert-success d-flex align-items-center gap-2 py-2 mb-3" style="font-size:.875rem;border-radius:10px">
+      <i class="bi bi-check-circle-fill"></i> {{ success }}
+    </div>
+    {% endif %}
+    {% if error %}
+    <div class="alert alert-danger d-flex align-items-center gap-2 py-2 mb-3" style="font-size:.875rem;border-radius:10px">
+      <i class="bi bi-exclamation-circle-fill"></i> {{ error }}
+    </div>
+    {% endif %}
+
+    <!-- Users table -->
+    <div class="table-card">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>المستخدم</th>
+              <th>البريد الإلكتروني</th>
+              <th>الصلاحية</th>
+              <th>الحالة</th>
+              <th>تاريخ الانضمام</th>
+              <th class="text-center">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+            <tr>
+              <!-- Avatar + name -->
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <div class="avatar-sm {% if not u.is_active %}inactive{% endif %}">
+                    {{ u.name[0] | upper }}
+                  </div>
+                  <div>
+                    <div class="fw-semibold" style="font-size:.88rem;color:#1e293b">{{ u.name }}</div>
+                    {% if u.id == current_user_id %}
+                    <div style="font-size:.72rem;color:#94a3b8">أنت</div>
+                    {% endif %}
+                  </div>
+                </div>
+              </td>
+
+              <!-- Email -->
+              <td style="font-size:.85rem;color:#475569">{{ u.email }}</td>
+
+              <!-- Role -->
+              <td>
+                {% set is_protected = (u.role == 'superadmin' and current_user_role != 'superadmin') %}
+                {% if is_protected %}
+                  <span class="role-pill superadmin"><i class="bi bi-shield-fill-check me-1"></i>مشرف عام</span>
+                {% else %}
+                <form method="post" action="/users/{{ u.id }}/role" style="display:inline">
+                  <select name="role" class="form-select form-select-sm"
+                          style="width:auto;font-size:.8rem;border-radius:8px"
+                          onchange="this.form.submit()"
+                          {% if u.id == current_user_id %}disabled{% endif %}>
+                    {% if current_user_role == 'superadmin' %}
+                    <option value="superadmin" {% if u.role == 'superadmin' %}selected{% endif %}>مشرف عام</option>
+                    {% endif %}
+                    <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>مشرف</option>
+                    <option value="user"  {% if u.role == 'user'  %}selected{% endif %}>مستخدم</option>
+                  </select>
+                </form>
+                {% endif %}
+              </td>
+
+              <!-- Status toggle -->
+              <td>
+                {% set can_toggle = (u.role != 'superadmin' or current_user_role == 'superadmin') %}
+                <form method="post" action="/users/{{ u.id }}/toggle" style="display:inline">
+                  <button type="submit" class="btn btn-sm px-3"
+                          style="font-size:.78rem;border-radius:8px;
+                                 {% if u.is_active %}background:#dcfce7;color:#16a34a;border:1px solid #bbf7d0{% else %}background:#fee2e2;color:#dc2626;border:1px solid #fecaca{% endif %}"
+                          {% if u.id == current_user_id or not can_toggle %}disabled{% endif %}>
+                    <span class="status-dot {% if u.is_active %}active{% else %}inactive{% endif %} me-1"></span>
+                    {{ 'نشط' if u.is_active else 'موقوف' }}
+                  </button>
+                </form>
+              </td>
+
+              <!-- Join date -->
+              <td style="font-size:.83rem;color:#64748b">
+                {{ u.created_at.strftime('%Y/%m/%d') if u.created_at else '—' }}
+              </td>
+
+              <!-- Actions -->
+              <td class="text-center">
+                {% set protected = (u.role == 'superadmin' and current_user_role != 'superadmin') %}
+                <button class="btn btn-sm btn-outline-primary px-2 py-1 me-1"
+                        style="font-size:.78rem;border-radius:6px"
+                        {% if protected %}disabled{% endif %}
+                        onclick="openResetModal({{ u.id }}, '{{ u.name }}')">
+                  <i class="bi bi-key"></i> إعادة تعيين
+                </button>
+                {% if u.id != current_user_id and not protected %}
+                <form method="post" action="/users/{{ u.id }}/delete" style="display:inline"
+                      onsubmit="return confirm('حذف المستخدم {{ u.name }}؟ لا يمكن التراجع.')">
+                  <button type="submit" class="btn btn-sm btn-outline-danger px-2 py-1"
+                          style="font-size:.78rem;border-radius:6px">
+                    <i class="bi bi-trash3"></i>
+                  </button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" class="text-center text-muted py-5">
+                <i class="bi bi-people" style="font-size:2rem;opacity:.3"></i>
+                <div class="mt-2">لا يوجد مستخدمون</div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Add User Modal ── -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:16px;overflow:hidden">
+      <div class="modal-header border-0 pb-0" style="background:#f8fafc">
+        <h6 class="modal-title fw-bold" style="color:#0C3D38">
+          <i class="bi bi-person-plus-fill me-2 text-primary"></i> إضافة مستخدم جديد
+        </h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/users/create">
+        <div class="modal-body pt-3">
+          <div class="mb-3">
+            <label class="form-label fw-semibold" style="font-size:.85rem">الاسم الكامل</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
+              <input type="text" name="name" class="form-control border-start-0" required placeholder="الاسم الكامل">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold" style="font-size:.85rem">البريد الإلكتروني</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0"><i class="bi bi-envelope text-muted"></i></span>
+              <input type="email" name="email" class="form-control border-start-0" required placeholder="example@domain.com">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold" style="font-size:.85rem">كلمة المرور</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock text-muted"></i></span>
+              <input type="password" name="password" id="addPass" class="form-control border-start-0 border-end-0"
+                     required minlength="6" placeholder="6 أحرف على الأقل">
+              <button type="button" class="input-group-text bg-light"
+                      onclick="toggleVis('addPass','addPassEye')">
+                <i class="bi bi-eye text-muted" id="addPassEye"></i>
+              </button>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold" style="font-size:.85rem">الصلاحية</label>
+            <select name="role" class="form-select" style="border-radius:8px">
+              <option value="user">مستخدم</option>
+              <option value="admin">مشرف</option>
+              {% if current_user_role == 'superadmin' %}
+              <option value="superadmin">مشرف عام</option>
+              {% endif %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">إلغاء</button>
+          <button type="submit" class="btn btn-primary px-4" style="border-radius:8px">
+            <i class="bi bi-person-check me-1"></i> إنشاء الحساب
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── Reset Password Modal ── -->
+<div class="modal fade" id="resetModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:16px;overflow:hidden">
+      <div class="modal-header border-0 pb-0" style="background:#f8fafc">
+        <h6 class="modal-title fw-bold" style="color:#0C3D38">
+          <i class="bi bi-key me-2 text-warning"></i> إعادة تعيين كلمة المرور
+        </h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" id="resetForm" action="">
+        <div class="modal-body pt-3">
+          <div class="text-muted mb-3" style="font-size:.85rem">
+            إعادة تعيين كلمة المرور للمستخدم: <strong id="resetName"></strong>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold" style="font-size:.85rem">كلمة المرور الجديدة</label>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock-fill text-muted"></i></span>
+              <input type="password" name="new_password" id="resetPass"
+                     class="form-control border-start-0 border-end-0"
+                     required minlength="6" placeholder="6 أحرف على الأقل">
+              <button type="button" class="input-group-text bg-light"
+                      onclick="toggleVis('resetPass','resetPassEye')">
+                <i class="bi bi-eye text-muted" id="resetPassEye"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0">
+          <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">إلغاء</button>
+          <button type="submit" class="btn btn-warning px-4 text-dark fw-semibold" style="border-radius:8px">
+            <i class="bi bi-key me-1"></i> تعيين
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function toggleVis(inputId, iconId) {
+    const inp = document.getElementById(inputId);
+    const ico = document.getElementById(iconId);
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+    ico.className = inp.type === 'password' ? 'bi bi-eye text-muted' : 'bi bi-eye-slash text-muted';
+  }
+
+  function openResetModal(userId, userName) {
+    document.getElementById('resetName').textContent = userName;
+    document.getElementById('resetForm').action = '/users/' + userId + '/reset-password';
+    document.getElementById('resetPass').value = '';
+    new bootstrap.Modal(document.getElementById('resetModal')).show();
+  }
+</script>
+{% endblock %}
