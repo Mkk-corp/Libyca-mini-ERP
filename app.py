@@ -6,31 +6,405 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
 from datetime import date, datetime
 from typing import Optional
-import math
+import math, os
+
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from database import (get_db, create_tables, Setting, Item, Supplier, Customer,
                       Employee, Payroll, Purchase, Sale, Expense, Collection,
                       PriceBoard, Receivable, Custody, ExpenseCategory, Hakiya, Warshfana,
-                      Note, Todo)
+                      Note, Todo, User)
 
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from routers.api import router as api_router
+from routers.auth import router as auth_router
+from routers.deps import get_current_user
+from routers.security import verify_password
 
-app = FastAPI(title="ليبيكا ERP")
+# ── Paths that skip the session check ──────────────────────
+_PUBLIC_PREFIXES = ("/login", "/register", "/static", "/api", "/docs", "/openapi", "/redoc")
 
-# CORS — للسماح لتطبيق Flutter بالاتصال
-app.add_middleware(
+
+class WebSessionGuard:
+    """
+    Pure-ASGI middleware: redirect unauthenticated web requests to /login.
+    Must be added to app BEFORE SessionMiddleware so that Starlette's
+    middleware stack runs SessionMiddleware first (outermost → innermost).
+    """
+    def __init__(self, app: ASGIApp) -> None:
+        self._app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http":
+            path = scope.get("path", "")
+            if not any(path.startswith(p) for p in _PUBLIC_PREFIXES):
+                # scope["session"] is populated by SessionMiddleware (runs before us)
+                session = scope.get("session", {})
+                if not session.get("user_id"):
+                    response = RedirectResponse(
+                        url=f"/login?next={path}", status_code=302
+                    )
+                    await response(scope, receive, send)
+                    return
+        await self._app(scope, receive, send)
+
+
+app = FastAPI(
+    title="ليبيكا ERP",
+    description="نظام إدارة متكامل — REST API",
+    version="2.0",
+)
+
+# Middleware order matters.  add_middleware() inserts at position 0 of the
+# internal list, then the stack is built in reversed order, making the
+# LAST add_middleware call the OUTERMOST layer (runs first on every request).
+#
+#   Call order below  →  Runtime order (outermost first):
+#   1. WebSessionGuard  →  3. WebSessionGuard   (inner — has session available)
+#   2. CORSMiddleware   →  2. CORSMiddleware
+#   3. SessionMiddleware→  1. SessionMiddleware  (outer — populates session)
+
+app.add_middleware(WebSessionGuard)          # ① added first  → runs last (has session)
+
+app.add_middleware(                          # ② middle
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+app.add_middleware(                          # ③ added last   → runs first (populates session)
+    SessionMiddleware,
+    secret_key=os.getenv("SESSION_SECRET", "libyca-session-secret-change-in-production"),
+    session_cookie="libyca_session",
+    max_age=60 * 60 * 8,
+    https_only=False,
+)
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
-app.include_router(api_router)
+
+# Auth endpoints — public (no token required)
+app.include_router(auth_router)
+
+# All /api/... endpoints — protected (valid JWT required)
+app.include_router(api_router, dependencies=[Depends(get_current_user)])
 
 create_tables()
+
+# ═══════════════════════════════════════════
+#  LOGIN / LOGOUT  (web session — not JWT)
+# ═══════════════════════════════════════════
+
+@app.get("/login", response_class=HTMLResponse, include_in_schema=False)
+async def login_page(request: Request, mode: str = "login"):
+    if request.session.get("user_id"):
+        return RedirectResponse("/", status_code=302)
+    return templates.TemplateResponse(request, "login.html", {
+        "error": None, "mode": mode,
+        "year": datetime.now().year,
+        "prefill_email": "", "prefill_name": "", "prefill_reg_email": "",
+    })
+
+
+@app.post("/login", include_in_schema=False)
+async def login_submit(
+    request: Request,
+    db: Session = Depends(get_db),
+    email: str = Form(...),
+    password: str = Form(...),
+):
+    def fail(msg):
+        return templates.TemplateResponse(
+            request, "login.html",
+            {"error": msg, "mode": "login", "year": datetime.now().year,
+             "prefill_email": email, "prefill_name": "", "prefill_reg_email": ""},
+            status_code=401,
+        )
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user or not verify_password(password, user.password_hash):
+        return fail("البريد الإلكتروني أو كلمة المرور غير صحيحة")
+    if not user.is_active:
+        return fail("الحساب موقوف، تواصل مع المشرف")
+
+    request.session["user_id"]   = user.id
+    request.session["user_name"] = user.name
+    request.session["user_role"] = user.role
+
+    next_url = request.query_params.get("next", "/")
+    # Safety: only allow relative redirects
+    if not next_url.startswith("/") or next_url.startswith("//"):
+        next_url = "/"
+    return RedirectResponse(next_url, status_code=303)
+
+
+@app.post("/register", include_in_schema=False)
+async def register_submit(
+    request: Request,
+    db: Session = Depends(get_db),
+    name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    confirm_password: str = Form(...),
+):
+    from routers.security import hash_password
+
+    def fail(msg):
+        return templates.TemplateResponse(
+            request, "login.html",
+            {"error": msg, "mode": "register", "year": datetime.now().year,
+             "prefill_email": "", "prefill_name": name, "prefill_reg_email": email},
+            status_code=400,
+        )
+
+    if len(password) < 6:
+        return fail("كلمة المرور يجب أن تكون 6 أحرف على الأقل")
+    if password != confirm_password:
+        return fail("كلمتا المرور غير متطابقتين")
+    if db.query(User).filter(User.email == email).first():
+        return fail("هذا البريد الإلكتروني مسجل مسبقاً")
+
+    user = User(
+        name=name.strip(),
+        email=email.strip().lower(),
+        password_hash=hash_password(password),
+        role="user",
+        created_at=datetime.utcnow(),
+    )
+    db.add(user); db.commit(); db.refresh(user)
+
+    # Auto-login after registration
+    request.session["user_id"]   = user.id
+    request.session["user_name"] = user.name
+    request.session["user_role"] = user.role
+    return RedirectResponse("/", status_code=303)
+
+
+@app.get("/logout", include_in_schema=False)
+async def web_logout(request: Request):
+    request.session.clear()
+    return RedirectResponse("/login", status_code=302)
+
+
+# ═══════════════════════════════════════════
+#  PROFILE
+# ═══════════════════════════════════════════
+
+@app.get("/profile", response_class=HTMLResponse, include_in_schema=False)
+async def profile_page(request: Request, db: Session = Depends(get_db)):
+    uid = request.session.get("user_id")
+    user = db.query(User).filter(User.id == uid).first()
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    return templates.TemplateResponse(request, "profile.html", {
+        "user": user,
+        "profile_success": request.query_params.get("ps") == "1",
+        "profile_error": None,
+        "pass_success": request.query_params.get("cs") == "1",
+        "pass_error": None,
+    })
+
+
+@app.post("/profile/update", include_in_schema=False)
+async def profile_update(
+    request: Request,
+    db: Session = Depends(get_db),
+    name: str = Form(...),
+    email: str = Form(...),
+):
+    uid = request.session.get("user_id")
+    user = db.query(User).filter(User.id == uid).first()
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    email = email.strip().lower()
+    name  = name.strip()
+
+    # Check email uniqueness (excluding current user)
+    conflict = db.query(User).filter(User.email == email, User.id != uid).first()
+    if conflict:
+        return templates.TemplateResponse(request, "profile.html", {
+            "user": user,
+            "profile_error": "هذا البريد الإلكتروني مستخدم من قِبل حساب آخر",
+            "profile_success": False,
+            "pass_success": False,
+            "pass_error": None,
+        }, status_code=400)
+
+    user.name  = name
+    user.email = email
+    db.commit()
+
+    # Refresh session display name
+    request.session["user_name"] = name
+
+    return RedirectResponse("/profile?ps=1", status_code=303)
+
+
+@app.post("/profile/password", include_in_schema=False)
+async def profile_password(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    confirm_password: str = Form(...),
+):
+    from routers.security import hash_password
+
+    uid = request.session.get("user_id")
+    user = db.query(User).filter(User.id == uid).first()
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+
+    def fail(msg):
+        return templates.TemplateResponse(request, "profile.html", {
+            "user": user,
+            "pass_error": msg,
+            "pass_success": False,
+            "profile_success": False,
+            "profile_error": None,
+        }, status_code=400)
+
+    if not verify_password(current_password, user.password_hash):
+        return fail("كلمة المرور الحالية غير صحيحة")
+    if len(new_password) < 6:
+        return fail("كلمة المرور الجديدة يجب أن تكون 6 أحرف على الأقل")
+    if new_password != confirm_password:
+        return fail("كلمتا المرور الجديدتان غير متطابقتين")
+
+    user.password_hash = hash_password(new_password)
+    db.commit()
+
+    return RedirectResponse("/profile?cs=1", status_code=303)
+
+
+# ═══════════════════════════════════════════
+#  USERS  (admin only)
+# ═══════════════════════════════════════════
+
+def _require_admin(request: Request):
+    if request.session.get("user_role") not in ("admin", "superadmin"):
+        raise HTTPException(status_code=403, detail="غير مصرح")
+
+def _require_superadmin(request: Request):
+    if request.session.get("user_role") != "superadmin":
+        raise HTTPException(status_code=403, detail="هذه العملية تتطلب صلاحية المشرف العام")
+
+
+@app.get("/users", response_class=HTMLResponse, include_in_schema=False)
+async def users_page(request: Request, db: Session = Depends(get_db)):
+    _require_admin(request)
+    users = db.query(User).order_by(User.created_at.desc()).all()
+    return templates.TemplateResponse(request, "users.html", {
+        "users": users,
+        "current_user_id": request.session.get("user_id"),
+        "current_user_role": request.session.get("user_role"),
+        "success": request.query_params.get("ok"),
+        "error": request.query_params.get("err"),
+    })
+
+
+@app.post("/users/create", include_in_schema=False)
+async def users_create(
+    request: Request,
+    db: Session = Depends(get_db),
+    name: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...),
+    role: str = Form("user"),
+):
+    from routers.security import hash_password
+    _require_admin(request)
+    email = email.strip().lower()
+    if db.query(User).filter(User.email == email).first():
+        return RedirectResponse("/users?err=البريد+الإلكتروني+مسجل+مسبقاً", status_code=303)
+    # Only superadmin can create superadmin accounts
+    if role == "superadmin" and request.session.get("user_role") != "superadmin":
+        role = "admin"
+    if role not in ("admin", "user", "superadmin"):
+        role = "user"
+    user = User(
+        name=name.strip(), email=email,
+        password_hash=hash_password(password),
+        role=role, created_at=datetime.utcnow(),
+    )
+    db.add(user); db.commit()
+    return RedirectResponse("/users?ok=تم+إنشاء+الحساب+بنجاح", status_code=303)
+
+
+@app.post("/users/{uid}/role", include_in_schema=False)
+async def users_set_role(
+    request: Request, uid: int,
+    db: Session = Depends(get_db),
+    role: str = Form(...),
+):
+    _require_admin(request)
+    current_role = request.session.get("user_role")
+    user = db.query(User).filter(User.id == uid).first()
+    if not user:
+        return RedirectResponse("/users", status_code=303)
+    # Only superadmin can touch superadmin accounts or assign superadmin role
+    if user.role == "superadmin" or role == "superadmin":
+        _require_superadmin(request)
+    allowed_roles = ("admin", "user", "superadmin") if current_role == "superadmin" else ("admin", "user")
+    if role in allowed_roles:
+        user.role = role
+        db.commit()
+    return RedirectResponse("/users", status_code=303)
+
+
+@app.post("/users/{uid}/toggle", include_in_schema=False)
+async def users_toggle(
+    request: Request, uid: int,
+    db: Session = Depends(get_db),
+):
+    _require_admin(request)
+    user = db.query(User).filter(User.id == uid).first()
+    if user:
+        # Only superadmin can toggle superadmin accounts
+        if user.role == "superadmin":
+            _require_superadmin(request)
+        user.is_active = not user.is_active
+        db.commit()
+    return RedirectResponse("/users", status_code=303)
+
+
+@app.post("/users/{uid}/reset-password", include_in_schema=False)
+async def users_reset_password(
+    request: Request, uid: int,
+    db: Session = Depends(get_db),
+    new_password: str = Form(...),
+):
+    from routers.security import hash_password
+    _require_admin(request)
+    user = db.query(User).filter(User.id == uid).first()
+    if user:
+        if user.role == "superadmin":
+            _require_superadmin(request)
+        if len(new_password) >= 6:
+            user.password_hash = hash_password(new_password)
+            db.commit()
+    return RedirectResponse("/users?ok=تم+تعيين+كلمة+المرور+بنجاح", status_code=303)
+
+
+@app.post("/users/{uid}/delete", include_in_schema=False)
+async def users_delete(
+    request: Request, uid: int,
+    db: Session = Depends(get_db),
+):
+    _require_admin(request)
+    if uid == request.session.get("user_id"):
+        return RedirectResponse("/users?err=لا+يمكنك+حذف+حسابك+الخاص", status_code=303)
+    user = db.query(User).filter(User.id == uid).first()
+    if user:
+        # Only superadmin can delete superadmin accounts
+        if user.role == "superadmin":
+            _require_superadmin(request)
+        db.delete(user); db.commit()
+    return RedirectResponse("/users?ok=تم+حذف+المستخدم", status_code=303)
+
 
 CATS = {1:'نقل',2:'ديزل/وقود',3:'عمالة',4:'صيانة',5:'كهرباء',
         6:'مياه',7:'إيجار',8:'اتصالات',9:'مصاريف إدارية',10:'أخرى',
